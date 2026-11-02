@@ -1,0 +1,95 @@
+<div class="pay-wrap">
+  <header>
+    <h1 class="pay-title">Paiements Orange Money</h1>
+    <p class="pay-sub">Chaque appel à Orange : encaissements clients, remboursements, versements chauffeurs. Toute notification est reconfirmée par un appel de statut.</p>
+  </header>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+      <input type="search" class="search-input" placeholder="Réf. Orange, n° de course, numéro…" aria-label="Rechercher une transaction" (input)="onSearch($any($event.target).value)" />
+    </div>
+    <select class="sel" aria-label="Type" (change)="setType($any($event.target).value)">
+      <option value="">Type : tous</option>
+      @for (t of types; track t.code) {
+        <option [value]="t.code">{{ t.label }}</option>
+      }
+    </select>
+    <select class="sel" aria-label="Statut" (change)="setStatus($any($event.target).value)">
+      <option value="">Statut : tous</option>
+      @for (s of statuses; track s.code) {
+        <option [value]="s.code">{{ s.label }}</option>
+      }
+    </select>
+    <select class="sel" aria-label="Période" (change)="setPeriod($any($event.target).value)">
+      @for (p of periods; track p.days) {
+        <option [value]="p.days" [selected]="p.days === periodDays()">{{ p.label }}</option>
+      }
+    </select>
+    <span class="period-label">
+      @if (periodDays() === 1) {
+        {{ range().to | date: 'd MMM y' }}
+      } @else {
+        {{ range().from | date: 'd MMM' }} – {{ range().to | date: 'd MMM y' }}
+      }
+    </span>
+  </div>
+
+  <div class="summary-row">
+    <span>Solde net de la sélection : <strong>{{ netBalance() | number }} F</strong></span>
+    <button class="btn-export" type="button" [disabled]="!filtered().length" (click)="exportCsv()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+      Exporter
+    </button>
+  </div>
+
+  <div class="table-card">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Réf. Orange</th>
+          <th>Type</th>
+          <th>Course</th>
+          <th>Numéro</th>
+          <th class="num">Montant</th>
+          <th>Statut</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (t of rows(); track t.orderId) {
+          <tr>
+            <td class="ref">{{ t.orderId }}</td>
+            <td>{{ typeLabels[t.type] }} <span class="code">{{ t.type }}</span></td>
+            <td>{{ t.rideRef }}</td>
+            <td class="nowrap">{{ t.msisdn }}</td>
+            <td class="num nowrap">{{ t.amount | number }} F</td>
+            <td><span class="pill" [class]="'pill ' + statusInfo(t.status).css">{{ statusInfo(t.status).label }}</span></td>
+            <td class="nowrap">{{ t.createdAt | date: 'd MMM HH:mm' }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="7" class="empty">Aucune transaction pour cette sélection.</td></tr>
+        }
+      </tbody>
+    </table>
+
+    <div class="pagination">
+      <span>{{ rangeLabel() }}</span>
+      <select class="pag-sel" aria-label="Lignes par page" (change)="setPageSize($any($event.target).value)">
+        @for (s of pageSizes; track s) {
+          <option [value]="s" [selected]="s === pageSize()">{{ s }}</option>
+        }
+      </select>
+      <span>par page</span>
+      <div class="pag-pages">
+        <button class="pag-btn" type="button" aria-label="Première page" [disabled]="currentPage() === 1" (click)="goTo(1)">«</button>
+        <button class="pag-btn" type="button" aria-label="Page précédente" [disabled]="currentPage() === 1" (click)="goTo(currentPage() - 1)">‹</button>
+        @for (p of pages(); track p) {
+          <button class="pag-btn" type="button" [class.active]="p === currentPage()" [attr.aria-current]="p === currentPage() ? 'page' : null" (click)="goTo(p)">{{ p }}</button>
+        }
+        <button class="pag-btn" type="button" aria-label="Page suivante" [disabled]="currentPage() === totalPages()" (click)="goTo(currentPage() + 1)">›</button>
+        <button class="pag-btn" type="button" aria-label="Dernière page" [disabled]="currentPage() === totalPages()" (click)="goTo(totalPages())">»</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,235 @@
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Tarifs et commission</h1>
+    <p class="page-sub">Réservé aux administrateurs. Chaque course garde le taux et le tarif en vigueur au moment de la commande.</p>
+  </div>
+  <button class="btn-primary" type="button" [disabled]="!dirty()" (click)="openSave()">Enregistrer les modifications</button>
+</div>
+
+@if (error()) {
+  <div class="state-banner" role="alert">{{ error() }}</div>
+}
+
+@if (notice()) {
+  <div class="state-banner success" role="status">{{ notice() }}</div>
+}
+
+@if (loading()) {
+  <div class="state-banner info">Chargement des tarifs…</div>
+}
+
+@if (overview(); as data) {
+  <div class="cards-grid">
+    <section class="card">
+      <h2 class="card-title">Commission Seddo</h2>
+      <label class="field-label" for="taux-defaut">Taux par défaut</label>
+      <div class="field wide">
+        <input id="taux-defaut" class="field-input" type="text" inputmode="decimal" [value]="rateDraft()" (input)="rateDraft.set($any($event.target).value)" />
+        <span class="field-suffix">%</span>
+      </div>
+      <p class="note">Part chauffeur = prix – commission. Un changement s'applique aux nouvelles commandes uniquement.</p>
+
+      <div class="exc-head">
+        <h2 class="card-title">Exceptions</h2>
+        <button class="btn-soft" type="button" (click)="openAdd()">Ajouter</button>
+      </div>
+      <table class="mini-table">
+        <thead>
+          <tr><th>Portée</th><th>Taux</th><th>Période</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (e of data.commission.exceptions; track e.id) {
+            <tr>
+              <td>{{ e.label }}</td>
+              <td>{{ e.rate }} %</td>
+              <td>{{ e.period }}</td>
+              <td class="trash-cell">
+                <button class="btn-trash" type="button" aria-label="Mettre fin à l'exception" (click)="openDelete(e)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="4">Aucune exception en vigueur.</td></tr>
+          }
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <div class="exc-head">
+        <h2 class="card-title">Tarifs</h2>
+        <select class="zone-select" aria-label="Zone tarifaire" (change)="selectZone($any($event.target).value)">
+          @for (z of data.zones; track z.id) {
+            <option [value]="z.id ?? ''" [selected]="z.id === data.tariffs.zone.id">{{ z.name }}</option>
+          }
+        </select>
+      </div>
+      <table class="mini-table tarifs">
+        <thead>
+          <tr>
+            <th>Paramètre</th>
+            @for (c of data.tariffs.categories; track c.code) {
+              <th>
+                {{ c.name }}@if (!c.active) { <small> (désactivée)</small> }
+                <button class="th-action" type="button" (click)="openCategory(c)">{{ c.active ? 'Désactiver' : 'Activer' }}</button>
+              </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of data.tariffs.rows; track row.key) {
+            <tr>
+              <td>{{ row.label }}</td>
+              @for (c of data.tariffs.categories; track c.code) {
+                <td>
+                  <div class="field">
+                    <input
+                      class="field-input"
+                      type="text"
+                      inputmode="decimal"
+                      [class.changed]="isPriceChanged(c.code, row.key, row.values[c.code])"
+                      [value]="priceDraft()[c.code]?.[row.key] ?? ''"
+                      (input)="setPrice(c.code, row.key, $any($event.target).value)"
+                      [attr.aria-label]="row.label + ' ' + c.name" />
+                    <span class="field-suffix">{{ row.unit }}</span>
+                  </div>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+      <p class="note">{{ data.tariffs.formula }}</p>
+    </section>
+  </div>
+}
+
+@if (dialog(); as d) {
+  <div class="modal-backdrop" (click)="closeDialog()">
+    <form class="modal" role="dialog" aria-modal="true" aria-labelledby="dlg-title" (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); submit()">
+      @switch (d.kind) {
+        @case ('save') {
+          <h2 id="dlg-title" class="modal-title">Enregistrer les modifications ?</h2>
+          <p class="modal-sub">
+            @if (rateChanged()) { Commission par défaut : {{ rateDraft() }} %. }
+            @if (changedCategories().length) { Prix modifiés : {{ changedCategories().join(', ') }}. }
+            Appliqué aux nouvelles commandes uniquement, les courses passées gardent leur tarif et leur taux.
+          </p>
+        }
+        @case ('delete') {
+          <h2 id="dlg-title" class="modal-title">Mettre fin à l'exception ?</h2>
+          <p class="modal-sub">{{ d.rule.label }} · {{ d.rule.rate }} %</p>
+        }
+        @case ('category') {
+          <h2 id="dlg-title" class="modal-title">{{ d.category.active ? 'Désactiver' : 'Activer' }} {{ d.category.name }} ?</h2>
+          <p class="modal-sub">{{ d.category.active ? 'La catégorie ne sera plus proposée aux clients.' : 'La catégorie sera de nouveau proposée aux clients.' }}</p>
+        }
+        @case ('add') {
+          <h2 id="dlg-title" class="modal-title">Ajouter une exception de commission</h2>
+          <p class="modal-sub">Un taux spécifique remplace le taux par défaut pour sa portée.</p>
+
+          <label class="form-label" for="add-scope">Portée</label>
+          <select id="add-scope" class="form-input" (change)="addScope.set($any($event.target).value)">
+            @for (s of scopes; track s.code) {
+              <option [value]="s.code" [selected]="addScope() === s.code">{{ s.label }}</option>
+            }
+          </select>
+
+          @if (addScope() === 'CATEGORY') {
+            <label class="form-label" for="add-category">Catégorie</label>
+            <select id="add-category" class="form-input" (change)="addCategory.set($any($event.target).value)">
+              @for (c of overview()?.tariffs?.categories ?? []; track c.code) {
+                <option [value]="c.code" [selected]="addCategory() === c.code">{{ c.name }}</option>
+              }
+            </select>
+          } @else if (addScope() === 'ZONE') {
+            <label class="form-label" for="add-zone">Zone</label>
+            <select id="add-zone" class="form-input" (change)="addZone.set($any($event.target).value)">
+              @for (z of zones(); track z.id) {
+                <option [value]="z.id" [selected]="addZone() === z.id">{{ z.name }}</option>
+              }
+            </select>
+          } @else {
+            <label class="form-label" for="add-days">Durée (jours après l'inscription)</label>
+            <input id="add-days" class="form-input" type="number" min="1" [value]="addDays()" (input)="addDays.set($any($event.target).value)" />
+          }
+
+          <label class="form-label" for="add-rate">Taux (%)</label>
+          <input id="add-rate" class="form-input" type="text" inputmode="decimal" [value]="addRate()" (input)="addRate.set($any($event.target).value)" />
+
+          <div class="form-row">
+            <div>
+              <label class="form-label" for="add-from">Début (facultatif)</label>
+              <input id="add-from" class="form-input" type="date" [value]="addFrom()" (input)="addFrom.set($any($event.target).value)" />
+            </div>
+            <div>
+              <label class="form-label" for="add-to">Fin (facultatif)</label>
+              <input id="add-to" class="form-input" type="date" [value]="addTo()" (input)="addTo.set($any($event.target).value)" />
+            </div>
+          </div>
+        }
+      }
+
+      <label class="form-label" for="dlg-reason">Motif (obligatoire)</label>
+      <input id="dlg-reason" class="form-input" type="text" autocomplete="off" [value]="reason()" (input)="reason.set($any($event.target).value)" />
+
+      @if (dialogError()) {
+        <div class="state-banner" role="alert">{{ dialogError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-soft" type="button" [disabled]="busy()" (click)="closeDialog()">Annuler</button>
+        <button class="btn-primary" type="submit" [disabled]="busy()">{{ busy() ? 'Enregistrement…' : 'Confirmer' }}</button>
+      </div>
+    </form>
+  </div>
+}
+
+<h2 class="section-title">Historique des modifications</h2>
+<div class="toolbar">
+  <div class="search-box">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a736c" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="search" placeholder="Rechercher dans l'historique..." class="search-input" [value]="search()" (input)="search.set($any($event.target).value)" />
+  </div>
+</div>
+
+<div class="table-card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Qui</th>
+        <th>Modification</th>
+        <th>Motif</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (h of visibleHistory(); track h.id) {
+        <tr>
+          <td class="nowrap">{{ h.date | date: 'dd/MM/yyyy HH:mm' }}</td>
+          <td>{{ h.by }}</td>
+          <td>{{ h.change }}</td>
+          <td>{{ h.reason || '—' }}</td>
+        </tr>
+      } @empty {
+        <tr><td colspan="4">{{ historyLoading() ? 'Chargement…' : 'Aucune modification.' }}</td></tr>
+      }
+    </tbody>
+  </table>
+  <div class="pagination">
+    <div class="pag-left">
+      <span>{{ rangeStart() }}-{{ rangeEnd() }} sur {{ historyTotal() | number: '1.0-0' }}</span>
+      <select class="pag-sel" aria-label="Lignes par page" (change)="setPageSize(+$any($event.target).value)">
+        @for (size of pageSizes; track size) {
+          <option [value]="size" [selected]="size === pageSize()">{{ size }}</option>
+        }
+      </select>
+      <span>par page</span>
+    </div>
+    <div class="pag-right">
+      <button class="pag-btn" type="button" [disabled]="page() === 1" aria-label="Première page" (click)="goTo(1)">«</button>
+      <button class="pag-btn" type="button" [disabled]="page() === 1" aria-label="Page précédente" (click)="goTo(page() - 1)">‹</button>
+      <button class="pag-btn active" type="button">{{ page() }}</button>
+      <button class="pag-btn" type="button" [disabled]="page() === lastPage()" aria-label="Page suivante" (click)="goTo(page() + 1)">›</button>
+      <button class="pag-btn" type="button" [disabled]="page() === lastPage()" aria-label="Dernière page" (click)="goTo(lastPage())">»</button>
+    </div>
+  </div>
+</div>

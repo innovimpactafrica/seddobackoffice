@@ -1,0 +1,88 @@
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Versements chauffeurs</h1>
+    <p class="page-sub">Part chauffeur (prix – commission) déposée sur son Orange Money après chaque course terminée</p>
+  </div>
+  <span class="pill pill-green median">Délai médian aujourd'hui : 41 s</span>
+</div>
+
+<section class="kpi-grid">
+  @for (k of kpis; track k.label) {
+    <div class="kpi-card">
+      <span class="kpi-label">{{ k.label }}</span>
+      <strong class="kpi-val">{{ k.valeur }}</strong>
+      <span class="kpi-sub" [class.red]="k.red">{{ k.sub }}</span>
+    </div>
+  }
+</section>
+
+<div class="toolbar">
+  <div class="search-box">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a736c" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="search" placeholder="Chauffeur, numéro, course..." class="search-input" />
+  </div>
+  <select class="sel">
+    <option>Statut : tous</option>
+    <option>Échoué</option>
+    <option>En file</option>
+    <option>Retenu</option>
+    <option>Versé</option>
+  </select>
+  <button class="btn-soft push-right" type="button"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Exporter</span></button>
+</div>
+
+<div class="table-card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th class="col-check"><input type="checkbox" aria-label="Tout sélectionner" /></th>
+        <th>Chauffeur</th>
+        <th>Numéro OM</th>
+        <th>Course</th>
+        <th>Montant</th>
+        <th class="num">Tentatives</th>
+        <th>Motif</th>
+        <th>Statut</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (v of versements; track v.course) {
+        <tr>
+          <td class="col-check"><input type="checkbox" [attr.aria-label]="'Sélectionner ' + v.chauffeur" /></td>
+          <td><strong class="link-strong">{{ v.chauffeur }}</strong></td>
+          <td class="nowrap">{{ v.numeroOm }}</td>
+          <td><span class="link">{{ v.course }}</span></td>
+          <td class="nowrap">{{ v.montant }}</td>
+          <td class="num nowrap">{{ v.tentatives }}</td>
+          <td class="col-motif">{{ v.motif }}</td>
+          <td><span class="pill" [ngClass]="statutClass(v.statut)">{{ v.statut }}</span></td>
+          <td class="col-actions">
+            @if (v.statut === 'Échoué' || v.statut === 'En file') {
+              <button class="btn-row" type="button">Relancer</button>
+              <button class="btn-row" type="button">Retenir</button>
+            } @else if (v.statut === 'Retenu') {
+              <button class="btn-row" type="button">Libérer</button>
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+    <div class="pagination">
+      <div class="pag-left">
+        <span>1-10 sur 876</span>
+        <select class="pag-sel"><option>10</option><option>25</option><option>50</option></select>
+        <span>par page</span>
+      </div>
+      <div class="pag-right">
+        <button class="pag-btn" type="button" disabled aria-label="Première page">«</button>
+        <button class="pag-btn" type="button" disabled aria-label="Page précédente">‹</button>
+        <button class="pag-btn active" type="button">1</button>
+        <button class="pag-btn" type="button">2</button>
+        <button class="pag-btn" type="button">3</button>
+        <button class="pag-btn" type="button" aria-label="Page suivante">›</button>
+        <button class="pag-btn" type="button" aria-label="Dernière page">»</button>
+      </div>
+    </div>
+</div>

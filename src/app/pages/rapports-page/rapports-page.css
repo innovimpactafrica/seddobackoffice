@@ -1,0 +1,323 @@
+/* ============================================================
+   RAPPORTS PAGE — fidèle à la capture
+   ============================================================ */
+
+:host {
+  display: block;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #191613;
+}
+
+.rp-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* En-tête */
+.rp-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.rp-title {
+  margin: 0 0 3px;
+  font-size: 22px;
+  font-weight: 800;
+  color: #191613;
+  letter-spacing: -0.01em;
+}
+
+.rp-sub {
+  margin: 0;
+  font-size: 13px;
+  color: #7a736c;
+}
+
+.btn-export {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: #fff;
+  border: 1px solid #e8e3de;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #191613;
+  cursor: pointer;
+  transition: background 0.12s;
+  white-space: nowrap;
+}
+
+.btn-export:hover:not(:disabled) { background: #f5f2ee; }
+
+.btn-export:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Période */
+.period-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.period-select {
+  padding: 7px 12px;
+  border: 1px solid #e8e3de;
+  border-radius: 7px;
+  font-size: 13px;
+  background: #fff;
+  color: #191613;
+  outline: none;
+  cursor: pointer;
+}
+
+.period-range {
+  font-size: 13px;
+  color: #7a736c;
+}
+
+/* 5 KPIs */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+.kpi-card {
+  background: #fff;
+  border: 1px solid #ede8e3;
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.kpi-label {
+  font-size: 12px;
+  color: #7a736c;
+  font-weight: 500;
+}
+
+.kpi-val {
+  font-size: 26px;
+  font-weight: 800;
+  color: #191613;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-empty .kpi-val {
+  color: #d8d2cb;
+}
+
+.kpi-sub {
+  font-size: 11.5px;
+  color: #7a736c;
+}
+
+/* Ligne graphique + fiabilité */
+.chart-row {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 14px;
+}
+
+/* Cartes communes */
+.card {
+  background: #fff;
+  border: 1px solid #ede8e3;
+  border-radius: 10px;
+  padding: 18px 20px;
+}
+
+.card-title {
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #191613;
+}
+
+/* Chart */
+.chart-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.bar-box {
+  position: relative;
+  height: 210px;
+  flex: 1;
+}
+
+/* Indicateurs fiabilité */
+.fiab-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.fiab-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.fiab-table th {
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #7a736c;
+  border-bottom: 1px solid #f0ece8;
+}
+
+.fiab-table td {
+  padding: 8px 8px;
+  border-bottom: 1px solid #f5f2ee;
+  color: #191613;
+  font-size: 12.5px;
+}
+
+.fiab-table td strong {
+  font-weight: 700;
+}
+
+.fiab-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.cible-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: #f1eeea;
+  color: #7a736c;
+}
+
+.cible-vert {
+  background: #eaf6ee;
+  color: #128a4f;
+}
+
+.cible-rouge {
+  background: #fef2f2;
+  color: #C42B25;
+}
+
+.cible-orange {
+  background: #fff8e8;
+  color: #9a6000;
+}
+
+/* Détail par jour */
+.detail-card {
+  overflow: hidden;
+}
+
+.detail-scroll {
+  overflow: auto;
+  max-height: 230px;
+}
+
+.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.detail-table th {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  padding: 6px 12px;
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #7a736c;
+  border-bottom: 1px solid #f0ece8;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+.detail-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid #f5f2ee;
+  color: #191613;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.detail-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.row-today td {
+  background: #fffaf7;
+}
+
+.today-label {
+  color: #e05500;
+  font-weight: 600;
+}
+
+/* États */
+.stale {
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+
+.muted {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: #7a736c;
+}
+
+.state-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #fde8e8;
+  color: #b3261e;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .kpi-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .chart-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .kpi-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

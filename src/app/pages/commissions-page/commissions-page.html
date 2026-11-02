@@ -1,0 +1,66 @@
+<div class="module-container">
+  <header class="module-header">
+    <div>
+      <span class="module-badge">Modèle Économique</span>
+      <h1>Gestion des Commissions</h1>
+      <p>Paramétrage des pourcentages de commission Seddo, paliers de fidélité et simulation de revenus.</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-primary">+ Nouveau palier</button>
+    </div>
+  </header>
+
+  <section class="kpi-grid">
+    <div class="kpi-card">
+      <span class="kpi-label">Taux standard Seddo</span>
+      <strong class="kpi-val highlight">15%</strong>
+      <span class="kpi-sub">Le plus juste du marché à Dakar</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Commissions brutes (Ce mois)</span>
+      <strong class="kpi-val success">1 762 500 F</strong>
+      <span class="kpi-sub">+14.2% de croissance</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Reversé aux chauffeurs</span>
+      <strong class="kpi-val">9 987 500 F</strong>
+      <span class="kpi-sub">85% des revenus générés</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Chauffeurs en palier Élite</span>
+      <strong class="kpi-val">22 chauffeurs</strong>
+      <span class="kpi-sub">Taux préférentiel 12%</span>
+    </div>
+  </section>
+
+  <section class="table-card">
+    <div class="table-toolbar">
+      <h2>Paliers de commission applicables</h2>
+    </div>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Segment Chauffeur</th>
+          <th>Taux Plateforme (Seddo)</th>
+          <th>Part Chauffeur</th>
+          <th>Description & Conditions</th>
+          <th>Volume traité ce mois</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of paliers; track p.segment) {
+          <tr>
+            <td><strong>{{ p.segment }}</strong></td>
+            <td><strong class="badge-rate-seddo">{{ p.tauxSeddo }}%</strong></td>
+            <td><strong class="badge-rate-driver">{{ p.partChauffeur }}%</strong></td>
+            <td>{{ p.description }}</td>
+            <td><strong>{{ p.volumeMensuel }}</strong></td>
+            <td><button class="btn-edit">Ajuster</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </section>
+</div>

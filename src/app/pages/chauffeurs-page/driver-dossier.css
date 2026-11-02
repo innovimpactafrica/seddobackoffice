@@ -1,0 +1,136 @@
+.dossier-grid {
+  display: grid;
+  grid-template-columns: 1.62fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.dossier-grid > .ch-section-card {
+  overflow-x: auto;
+}
+
+.side .ch-section-card:last-child {
+  margin-bottom: 0;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.card-head .ch-section-title {
+  margin: 0;
+}
+
+.missing {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: #fff3e8;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #8a4500;
+}
+
+.request {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #fff8e8;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #7a5200;
+}
+
+.big {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.big::first-letter {
+  text-transform: uppercase;
+}
+
+.review-note {
+  margin-top: 10px;
+}
+
+.err-line {
+  font-weight: 600;
+  color: #c42b25;
+}
+
+.pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: #f1eeea;
+  color: #7a736c;
+}
+
+.pill-on   { background: #eaf6ee; color: #128a4f; }
+.pill-warn { background: #fff8e8; color: #9a6000; }
+.pill-err  { background: #fef2f2; color: #c42b25; }
+
+.facts {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.facts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+}
+
+.facts dt {
+  color: #7a736c;
+  flex-shrink: 0;
+}
+
+.facts dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.doc-frame {
+  height: min(60vh, 520px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f2ee;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.doc-frame img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.doc-frame iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+@media (max-width: 1100px) {
+  .dossier-grid {
+    grid-template-columns: 1fr;
+  }
+}

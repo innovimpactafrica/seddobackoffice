@@ -1,0 +1,113 @@
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Rapprochement</h1>
+    <p class="page-sub">Relevé du compte marchand Orange Money comparé chaque jour au grand livre Seddo</p>
+  </div>
+  <button class="btn-soft" type="button">Importer un relevé</button>
+</div>
+
+<section class="kpi-grid">
+  @for (k of kpis; track k.label) {
+    <div class="kpi-card">
+      <span class="kpi-label">{{ k.label }}</span>
+      <strong class="kpi-val">{{ k.valeur }}</strong>
+      <span class="kpi-sub" [class.red]="k.red">{{ k.sub }}</span>
+    </div>
+  }
+</section>
+
+<section class="gaps-card">
+  <h2 class="gaps-title">Écarts à expliquer</h2>
+  <table class="gaps-table">
+    <thead>
+      <tr>
+        <th>Réf. Orange</th>
+        <th>Type</th>
+        <th>Montant</th>
+        <th>Constat</th>
+        <th>Statut</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="ref">CI270414.2231.9AF0</td>
+        <td>Encaissement</td>
+        <td class="nowrap">1 500 F</td>
+        <td class="constat">Paiement confirmé par Orange après expiration de la commande SD-1611</td>
+        <td><span class="pill pill-red">À traiter</span></td>
+        <td class="actions">
+          <button class="btn-primary" type="button">Rembourser</button>
+          <button class="btn-row" type="button">Expliquer</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<div class="toolbar">
+  <div class="search-box">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a736c" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="search" placeholder="Date (2027-04-14)..." class="search-input" />
+  </div>
+  <select class="sel">
+    <option>Statut : tous</option>
+    <option>À traiter</option>
+    <option>Clôturé</option>
+  </select>
+  <select class="sel">
+    <option>Depuis le lancement</option>
+    <option>7 derniers jours</option>
+    <option>30 derniers jours</option>
+  </select>
+  <span class="period-label">1 mars – 15 avr. 2027</span>
+</div>
+
+<div class="table-card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Journée</th>
+        <th class="num">Relevé Orange (net)</th>
+        <th class="num">Grand livre Seddo (net)</th>
+        <th class="num">Écart</th>
+        <th>Statut</th>
+        <th>Clôturé par</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (j of journees; track j.jour) {
+        <tr>
+          <td><strong>{{ j.jour }}</strong></td>
+          <td class="num">{{ j.releve }}</td>
+          <td class="num">{{ j.grandLivre }}</td>
+          <td class="num" [class.ecart-red]="j.aTraiter">{{ j.ecart }}</td>
+          <td>
+            @if (j.aTraiter) {
+              <span class="pill pill-red">À traiter</span>
+            } @else {
+              <span class="pill pill-green">Clôturé</span>
+            }
+          </td>
+          <td>{{ j.clotureePar }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+    <div class="pagination">
+      <div class="pag-left">
+        <span>1-10 sur 45</span>
+        <select class="pag-sel"><option>10</option><option>25</option><option>50</option></select>
+        <span>par page</span>
+      </div>
+      <div class="pag-right">
+        <button class="pag-btn" type="button" disabled aria-label="Première page">«</button>
+        <button class="pag-btn" type="button" disabled aria-label="Page précédente">‹</button>
+        <button class="pag-btn active" type="button">1</button>
+        <button class="pag-btn" type="button">2</button>
+        <button class="pag-btn" type="button">3</button>
+        <button class="pag-btn" type="button" aria-label="Page suivante">›</button>
+        <button class="pag-btn" type="button" aria-label="Dernière page">»</button>
+      </div>
+    </div>
+</div>

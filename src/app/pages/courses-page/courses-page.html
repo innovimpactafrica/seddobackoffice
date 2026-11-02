@@ -1,0 +1,284 @@
+<div class="courses-container">
+
+  <header class="courses-header">
+    <h1 class="header-title">Courses</h1>
+    <p class="header-subtitle">{{ total() }} course(s) sur la période · cliquez sur une ligne pour le détail</p>
+  </header>
+
+  @if (notice()) {
+    <div class="state-banner state-ok" role="status">{{ notice() }} <button class="btn-link" type="button" (click)="notice.set('')">Fermer</button></div>
+  }
+  @if (error()) {
+    <div class="state-banner" role="alert">{{ error() }} <button class="btn-link" type="button" (click)="load()">Réessayer</button></div>
+  }
+
+  <div class="filters-row">
+    <div class="search-box">
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a736c" stroke-width="2" stroke-linecap="round">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input
+        type="search"
+        placeholder="N° de course, téléphone..."
+        class="search-input"
+        (input)="onSearch($any($event.target).value)"
+      />
+    </div>
+
+    <select class="filter-select" (change)="onStatus($any($event.target).value)">
+      <option value="">Statut : tous</option>
+      @for (s of statusOptions; track s.code) {
+        <option [value]="s.code">{{ s.label }}</option>
+      }
+    </select>
+
+    <select class="filter-select" (change)="onPeriod($any($event.target).value)">
+      @for (p of periods; track p.days) {
+        <option [value]="p.days" [selected]="p.days === periodDays()">{{ p.label }}</option>
+      }
+    </select>
+
+    <span class="period-label">{{ periodLabel() }}</span>
+  </div>
+
+
+  <button class="btn-exporter" type="button">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+    <span>Exporter</span>
+  </button>
+
+  <div class="table-wrapper">
+    <table class="courses-table">
+      <thead>
+        <tr>
+          <th class="col-num">N°</th>
+          <th class="col-date">Date</th>
+          <th class="col-client">Client</th>
+          <th class="col-chauffeur">Chauffeur</th>
+          <th class="col-trajet">Trajet</th>
+          <th class="col-prix">Prix</th>
+          <th class="col-statut">Statut</th>
+        </tr>
+      <tbody>
+        @for (c of rides(); track c.id) {
+          <tr [class.row-selected]="c.id === selectedId()" (click)="selectCourse(c.id)">
+            <td class="col-num"><strong>{{ c.ref }}</strong></td>
+            <td class="col-date">{{ formatDate(c.createdAt) }}</td>
+            <td class="col-client">{{ c.clientName || c.clientPhone || '—' }}</td>
+            <td class="col-chauffeur">
+              @if (c.driverName || c.driverPhone) {
+                {{ c.driverName || c.driverPhone }}
+              } @else {
+                <span class="chauffeur-none">aucun</span>
+              }
+            </td>
+            <td class="col-trajet">{{ c.pickupAddress || '—' }} → {{ c.dropoffAddress || '—' }}</td>
+            <td class="col-prix">{{ c.price.toLocaleString('fr-FR') }} F</td>
+            <td class="col-statut"><span class="pill" [ngClass]="statusInfo(c.status).css">{{ statusInfo(c.status).label }}</span></td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="7" class="empty-cell">{{ loading() ? 'Chargement…' : 'Aucune course.' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    <div class="table-pagination">
+      <div class="pag-left">
+        <span>{{ rangeLabel() }}</span>
+        <select class="pag-select" (change)="onPageSize($any($event.target).value)">
+          @for (n of pageSizes; track n) {
+            <option [value]="n" [selected]="n === pageSize()">{{ n }}</option>
+          }
+        </select>
+        <span>par page</span>
+      </div>
+      <div class="pag-right">
+        <button class="pag-btn" type="button" [disabled]="currentPage() === 1" (click)="goTo(1)" aria-label="Première page">«</button>
+        <button class="pag-btn" type="button" [disabled]="currentPage() === 1" (click)="goTo(currentPage() - 1)" aria-label="Page précédente">‹</button>
+        @for (p of pages(); track p) {
+          <button class="pag-btn" type="button" [class.active]="p === currentPage()" (click)="goTo(p)">{{ p }}</button>
+        }
+        <button class="pag-btn" type="button" [disabled]="currentPage() === totalPages()" (click)="goTo(currentPage() + 1)" aria-label="Page suivante">›</button>
+        <button class="pag-btn" type="button" [disabled]="currentPage() === totalPages()" (click)="goTo(totalPages())" aria-label="Dernière page">»</button>
+      </div>
+    </div>
+  </div>
+
+  @if (selected(); as sel) {
+    <aside class="slide-drawer" aria-label="Détail de la course">
+
+      <div class="drawer-header">
+        <div class="dh-left">
+          <h2 class="dh-title">Course {{ sel.ref }}</h2>
+          <span class="pill" [ngClass]="statusInfo(sel.status).css">{{ statusInfo(sel.status).label }}</span>
+        </div>
+        <button class="dh-close" (click)="closeDrawer()" aria-label="Fermer le volet">×</button>
+      </div>
+
+      @if (detailLoading()) {
+        <p class="drawer-subtitle">Chargement du détail…</p>
+      }
+      @if (detailError()) {
+        <div class="state-banner" role="alert">{{ detailError() }}</div>
+      }
+
+      @if (summary(); as s) {
+        <p class="drawer-subtitle">{{ s.description }}</p>
+
+        <div class="drawer-meta">
+          <div class="meta-item">
+            <span class="meta-label">Client</span>
+            <span class="meta-val"><strong>{{ s.client }}</strong></span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Chauffeur</span>
+            <span class="meta-val">
+              @if (s.driver) {
+                <strong>{{ s.driver }}</strong>
+              } @else {
+                <strong class="chauffeur-none">aucun chauffeur</strong>
+              }
+            </span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Trajet</span>
+            <span class="meta-val"><strong>{{ s.trajet }}</strong></span>
+          </div>
+          @if (s.cancelReason) {
+            <div class="meta-item">
+              <span class="meta-label">Motif d'annulation</span>
+              <span class="meta-val"><strong>{{ s.cancelReason }}</strong></span>
+            </div>
+          }
+        </div>
+
+        <div class="drawer-timeline">
+          @for (ev of s.events; track $index; let last = $last) {
+            <div class="tl-row">
+              <span class="tl-hour">{{ ev.heure }}</span>
+              <div class="tl-spine">
+                <span class="tl-node" [class.node-orange]="ev.orange"></span>
+                @if (!last) {
+                  <span class="tl-track"></span>
+                }
+              </div>
+              <div class="tl-desc">
+                <span class="tl-line">{{ ev.texteL1 }}</span>
+                @if (ev.texteL2) {
+                  <span class="tl-line">{{ ev.texteL2 }}</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="drawer-financial">
+          <div class="fin-item">
+            <span class="fin-lbl">Prix (payé)</span>
+            <span class="fin-num-bold">{{ s.prixPaye }}</span>
+          </div>
+          <div class="fin-item">
+            <span class="fin-lbl">Commission Seddo ({{ s.commissionTaux }})</span>
+            <span class="fin-num">{{ s.commissionSeddo }}</span>
+          </div>
+          <div class="fin-item">
+            <span class="fin-lbl">Part chauffeur</span>
+            <span class="fin-num">{{ s.partChauffeur }}</span>
+          </div>
+          <div class="fin-item">
+            <span class="fin-lbl">Remboursé</span>
+            <span class="fin-num-bold">{{ s.rembourse }}</span>
+          </div>
+        </div>
+
+        @if (s.transactions.length > 0) {
+          <div class="drawer-trans">
+            <h3 class="trans-heading">Transactions Orange Money</h3>
+            @for (tr of s.transactions; track tr.ref) {
+              <div class="trans-row">
+                <span class="tr-col-type">{{ tr.type }}</span>
+                <span class="tr-col-ref">{{ tr.ref }}</span>
+                <span class="tr-col-amount">{{ tr.montant }}</span>
+                <span class="tr-col-status" [class.tr-failed]="tr.failed">{{ tr.statut }}</span>
+              </div>
+            }
+          </div>
+        }
+
+        <div class="drawer-footer-actions">
+          @if (canCancel()) {
+            <button class="btn-cancel" type="button" (click)="openAction('cancel')">Annuler la course</button>
+          }
+          @if (canForce()) {
+            <button class="btn-neutral" type="button" (click)="openAction('force')">Forcer la clôture</button>
+          }
+          @if (canRefund()) {
+            <button class="btn-neutral" type="button" (click)="openAction('refund')">Rembourser</button>
+          }
+          <button class="btn-neutral" type="button" (click)="openAction('ticket')">Ouvrir un ticket</button>
+        </div>
+      }
+
+    </aside>
+  }
+
+  @if (action(); as act) {
+    <div class="modal-backdrop" (click)="closeAction()">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ride-action-title" (click)="$event.stopPropagation()">
+        <h2 id="ride-action-title" class="modal-title">
+          @switch (act) {
+            @case ('cancel') { Annuler cette course ? }
+            @case ('force') { Forcer la clôture ? }
+            @case ('refund') { Remboursement manuel }
+            @default { Ouvrir un ticket }
+          }
+        </h2>
+        <p class="modal-sub">
+          @switch (act) {
+            @case ('cancel') { Le client sera remboursé intégralement. }
+            @case ('force') { La course est clôturée : répartition et versement comme une fin normale. }
+            @case ('refund') { Direct sous le seuil ; au-delà, une demande est transmise à la Finance pour validation. }
+            @default { Le ticket est rattaché à la course {{ selected()?.ref }}. }
+          }
+        </p>
+
+        @if (act === 'refund') {
+          <label class="form-label" for="ride-amount">Montant (F)</label>
+          <input id="ride-amount" class="form-input" type="number" min="1" inputmode="numeric" [value]="refundAmount()" (input)="refundAmount.set($any($event.target).value)" />
+        }
+        @if (act === 'ticket') {
+          <label class="form-label" for="ride-tk-cat">Catégorie</label>
+          <select id="ride-tk-cat" class="form-input" (change)="ticketCategory.set($any($event.target).value)">
+            @for (c of ticketCategories; track c.code) {
+              <option [value]="c.code" [selected]="c.code === ticketCategory()">{{ c.label }}</option>
+            }
+          </select>
+          <label class="form-label" for="ride-tk-prio">Priorité</label>
+          <select id="ride-tk-prio" class="form-input" (change)="ticketPriority.set($any($event.target).value)">
+            @for (p of ticketPriorities; track p.code) {
+              <option [value]="p.code" [selected]="p.code === ticketPriority()">{{ p.label }}</option>
+            }
+          </select>
+        }
+
+        <label class="form-label" for="ride-reason">{{ act === 'ticket' ? 'Description (obligatoire)' : 'Motif (obligatoire)' }}</label>
+        <textarea id="ride-reason" class="form-input form-textarea" rows="3" [value]="reason()" (input)="reason.set($any($event.target).value)"></textarea>
+        @if (actionError()) {
+          <div class="state-banner" role="alert">{{ actionError() }}</div>
+        }
+        <div class="modal-actions">
+          <button class="btn-neutral btn-modal" type="button" [disabled]="busy()" (click)="closeAction()">Retour</button>
+          <button class="btn-cancel btn-modal" type="button" [disabled]="busy()" (click)="submitAction()">{{ busy() ? 'Veuillez patienter…' : act === 'ticket' ? 'Ouvrir le ticket' : 'Confirmer' }}</button>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>

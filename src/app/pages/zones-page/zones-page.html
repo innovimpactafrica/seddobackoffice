@@ -1,0 +1,690 @@
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Zones de service</h1>
+    <p class="page-sub">Le serveur résout le départ et l'arrivée de chaque course : commande possible, grille, suppléments, chauffeurs sollicités et commission.</p>
+  </div>
+  <div class="head-actions">
+    <button class="btn-soft" type="button" [class.active]="mapMode() === 'simulate'" (click)="mapMode() === 'simulate' ? closeSimulate() : openSimulate()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg>
+      Tester un trajet
+    </button>
+    @if (canCreate()) {
+      <button class="btn-primary" type="button" (click)="openCreate()">Nouvelle zone</button>
+    }
+  </div>
+</div>
+
+<div class="tabs" role="tablist" aria-label="Statut">
+  @for (t of statusTabs; track t.code) {
+    <button class="tab" type="button" role="tab" [class.active]="statusFilter() === t.code" [attr.aria-selected]="statusFilter() === t.code" (click)="setStatusFilter(t.code)">
+      {{ t.label }}
+      @if (t.code !== 'ARCHIVED') {
+        <span class="tab-count">{{ counts()[t.code] }}</span>
+      }
+    </button>
+  }
+</div>
+
+@if (notice()) {
+  <div class="state-banner success" role="status">
+    {{ notice() }}
+    <button type="button" class="btn-link push-right" (click)="notice.set('')">Fermer</button>
+  </div>
+}
+@if (error()) {
+  <div class="state-banner" role="alert">
+    {{ error() }}
+    <button type="button" class="btn-link" (click)="load()">Réessayer</button>
+  </div>
+}
+
+<div class="zones-grid">
+  <!-- ─── Carte ─────────────────────────────────────────────────────────── -->
+  <div class="map-card" [class.mode-draw]="mapMode() === 'draw'" [class.mode-simulate]="mapMode() === 'simulate'">
+    <div #mapEl class="map-canvas" role="application" aria-label="Carte des zones"></div>
+    @if (!mapReady()) {
+      <div class="map-overlay">{{ mapError() || 'Chargement de la carte…' }}</div>
+    }
+    @if (mapReady()) {
+      @if (mapMode() === 'draw' && drawMethod() === 'polygon') {
+        <div class="map-hint">Cliquez pour ajouter un point · glissez un point pour le déplacer · clic droit pour le supprimer</div>
+      } @else if (mapMode() === 'draw' && drawMethod() === 'circle') {
+        <div class="map-hint">Cliquez sur la carte pour placer le centre du cercle</div>
+      } @else if (mapMode() === 'simulate') {
+        <div class="map-hint">Cliquez pour placer le départ (A), puis l'arrivée (B)</div>
+      }
+    }
+    @if (mapMode() === 'view') {
+      <ul class="map-legend">
+        <li><span class="legend-swatch"></span>Service</li>
+        <li><span class="legend-swatch special"></span>Spéciale</li>
+        <li><span class="legend-swatch restricted"></span>Restreinte</li>
+        <li><span class="legend-swatch draft"></span>Brouillon</li>
+      </ul>
+    }
+  </div>
+
+  <!-- ─── Panneau latéral ───────────────────────────────────────────────── -->
+  <div class="side-card">
+    @switch (mapMode()) {
+      @case ('draw') {
+        @if (drawZone(); as z) {
+          <div class="side-head">
+            <div>
+              <h2 class="card-title">Contour · {{ z.name }}</h2>
+              <p class="side-sub">Tracez large : 200 à 300 m au-delà des dernières rues desservies.</p>
+            </div>
+          </div>
+          <div class="segmented" role="radiogroup" aria-label="Méthode">
+            <button type="button" [class.active]="drawMethod() === 'polygon'" [disabled]="!mapReady()" (click)="setDrawMethod('polygon')">Dessiner</button>
+            <button type="button" [class.active]="drawMethod() === 'circle'" (click)="setDrawMethod('circle')">Cercle</button>
+            <button type="button" [class.active]="drawMethod() === 'import'" (click)="setDrawMethod('import')">Importer</button>
+          </div>
+
+          @switch (drawMethod()) {
+            @case ('polygon') {
+              <p class="draw-count"><strong>{{ drawPoints() }}</strong> point{{ drawPoints() > 1 ? 's' : '' }} @if (drawPoints() < 3) { · 3 minimum }</p>
+              <div class="inline-actions">
+                <button class="btn-row" type="button" [disabled]="!drawPoints()" (click)="undoPoint()">Annuler le dernier point</button>
+                <button class="btn-row" type="button" [disabled]="!drawPoints()" (click)="clearPoints()">Tout effacer</button>
+              </div>
+              @if (z.geometry?.type === 'MultiPolygon' && z.geometry!.coordinates.length > 1) {
+                <p class="hint">Ce contour a plusieurs parties : seule la première est reprise, l'enregistrement remplace l'ensemble.</p>
+              }
+            }
+            @case ('circle') {
+              <div class="form-grid">
+                <label class="form-label" for="c-lat">Latitude du centre
+                  <input id="c-lat" class="form-input" inputmode="decimal" [value]="circleLat()" (input)="circleLat.set($any($event.target).value); renderCircle()" />
+                </label>
+                <label class="form-label" for="c-lng">Longitude du centre
+                  <input id="c-lng" class="form-input" inputmode="decimal" [value]="circleLng()" (input)="circleLng.set($any($event.target).value); renderCircle()" />
+                </label>
+              </div>
+              <label class="form-label" for="c-radius">Rayon</label>
+              <div class="input-suffix">
+                <input id="c-radius" class="form-input" inputmode="numeric" [value]="circleRadius()" (input)="circleRadius.set($any($event.target).value); renderCircle()" />
+                <span>m</span>
+              </div>
+              <p class="hint">Le cercle est converti en polygone à l'enregistrement.</p>
+            }
+            @case ('import') {
+              <label class="file-drop">
+                <input type="file" accept=".geojson,.json,.kml,application/geo+json,application/vnd.google-earth.kml+xml" (change)="onImportFile($event)" />
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <span>{{ importName() || 'Choisir un fichier GeoJSON ou KML' }}</span>
+                <small>Par exemple les limites administratives d'une commune</small>
+              </label>
+              @if (importName() && importIsKml()) {
+                <p class="hint">Fichier KML : l'aperçu s'affichera après l'enregistrement.</p>
+              }
+            }
+          }
+
+          <label class="form-label" for="draw-reason">Motif</label>
+          <input id="draw-reason" class="form-input" type="text" placeholder="Ex. contour élargi de 200 m au nord" [value]="drawReason()" (input)="drawReason.set($any($event.target).value)" />
+          @if (drawError()) {
+            <div class="state-banner" role="alert">{{ drawError() }}</div>
+          }
+          <div class="side-actions">
+            <button class="btn-row" type="button" [disabled]="busy()" (click)="cancelDraw()">Annuler</button>
+            <button class="btn-row btn-orange" type="button" [disabled]="busy()" (click)="saveDraw()">{{ busy() ? 'Vérification…' : 'Enregistrer le contour' }}</button>
+          </div>
+          <p class="hint">Le serveur refuse un contour invalide et une zone de service qui en chevauche une autre.</p>
+        }
+      }
+
+      @case ('simulate') {
+        <div class="side-head">
+          <div>
+            <h2 class="card-title">Tester un trajet</h2>
+            <p class="side-sub">Zones trouvées et prix détaillé, sans créer de course.</p>
+          </div>
+          <button class="btn-icon" type="button" aria-label="Fermer" (click)="closeSimulate()">×</button>
+        </div>
+
+        <div class="sim-point">
+          <span class="sim-badge a">A</span>
+          <input class="form-input" inputmode="decimal" placeholder="Latitude" aria-label="Latitude du départ" [value]="coord(simPickup(), 'lat')" (change)="setSimCoord('pickup', 'lat', $any($event.target).value)" />
+          <input class="form-input" inputmode="decimal" placeholder="Longitude" aria-label="Longitude du départ" [value]="coord(simPickup(), 'lng')" (change)="setSimCoord('pickup', 'lng', $any($event.target).value)" />
+        </div>
+        <div class="sim-point">
+          <span class="sim-badge b">B</span>
+          <input class="form-input" inputmode="decimal" placeholder="Latitude" aria-label="Latitude de l'arrivée" [value]="coord(simDropoff(), 'lat')" (change)="setSimCoord('dropoff', 'lat', $any($event.target).value)" />
+          <input class="form-input" inputmode="decimal" placeholder="Longitude" aria-label="Longitude de l'arrivée" [value]="coord(simDropoff(), 'lng')" (change)="setSimCoord('dropoff', 'lng', $any($event.target).value)" />
+        </div>
+        <label class="form-label" for="sim-at">Heure de la commande <small>(vide = maintenant ; pour tester une grille de nuit ou des horaires)</small></label>
+        <input id="sim-at" class="form-input" type="datetime-local" [value]="simAt()" (input)="simAt.set($any($event.target).value)" />
+        @if (simError()) {
+          <div class="state-banner" role="alert">{{ simError() }}</div>
+        }
+        <div class="side-actions">
+          <button class="btn-row btn-orange" type="button" [disabled]="simBusy()" (click)="runSimulate()">{{ simBusy() ? 'Calcul…' : 'Calculer' }}</button>
+        </div>
+
+        @if (simResult(); as res) {
+          <div class="sim-result">
+            <div class="sim-verdict" [class.ok]="res.orderable">
+              {{ res.orderable ? 'Commande possible' : 'Commande refusée' }}
+              <small>{{ res.distanceM / 1000 | number: '1.0-1' }} km · {{ res.durationS / 60 | number: '1.0-0' }} min
+                @if (res.pricingZone) { · tarif de {{ res.pricingZone.name }} }
+              </small>
+            </div>
+            @for (side of [{ badge: 'A', r: res.pickupZones }, { badge: 'B', r: res.dropoffZones }]; track side.badge) {
+              <div class="sim-side">
+                <span class="sim-badge" [class.a]="side.badge === 'A'" [class.b]="side.badge === 'B'">{{ side.badge }}</span>
+                <div>
+                  <strong>{{ resolutionZones(side.r) }}</strong>
+                  <span class="pill" [class.pill-green]="side.r.servable" [class.pill-gray]="!side.r.servable">{{ side.r.servable ? 'Desservi' : 'Non desservi' }}</span>
+                  @if (side.r.message) { <small>{{ side.r.message }}</small> }
+                </div>
+              </div>
+            }
+            @if (res.adjustments.length) {
+              <p class="hint">Point déplacé vers le point de remplacement d'une zone restreinte.</p>
+            }
+            @if (res.orderable) {
+              @for (o of res.options; track o.category) {
+                <div class="sim-price">
+                  <div class="sim-price-head">
+                    <strong>{{ categoryLabel(o.category) }} @if (o.grid) { <small class="grid-label">grille {{ o.grid.label }}</small> }</strong>
+                    <strong class="sim-total">{{ o.price | number: '1.0-0' }} F</strong>
+                  </div>
+                  @for (l of priceLines(o, res); track $index) {
+                    <div class="sim-line">
+                      <span>{{ l.label }}@if (l.hint) { <small> · {{ l.hint }}</small> }</span>
+                      <span>{{ l.value ? (l.value | number: '1.0-0') + ' F' : '' }}</span>
+                    </div>
+                  }
+                  <div class="sim-line muted">
+                    <span>{{ minimumApplied(o) ? 'Course minimum appliquée' : 'Course minimum' }}</span>
+                    <span>{{ o.minimumFare | number: '1.0-0' }} F</span>
+                  </div>
+                  <div class="sim-line muted"><span>Arrondi aux 50 F supérieurs</span><span></span></div>
+                </div>
+              }
+              @if (res.traffic.length) {
+                <ul class="traffic-legend">
+                  <li><span class="t-normal"></span>Fluide</li>
+                  <li><span class="t-slow"></span>Ralenti</li>
+                  <li><span class="t-jam"></span>Bouchon</li>
+                </ul>
+              }
+            }
+            <details class="sim-raw">
+              <summary>Réponse complète</summary>
+              <pre>{{ simJson() }}</pre>
+            </details>
+          </div>
+        }
+      }
+
+      @default {
+        <div class="toolbar">
+          <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a736c" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="search" placeholder="Code ou nom…" class="search-input" [value]="search()" (input)="setSearch($any($event.target).value)" />
+          </div>
+          <select class="sel" aria-label="Type de zone" (change)="setTypeFilter($any($event.target).value)">
+            <option value="">Type : tous</option>
+            @for (t of types; track t) {
+              <option [value]="t" [selected]="typeFilter() === t">{{ typeLabels[t] }}</option>
+            }
+          </select>
+        </div>
+        <div class="list-scroll" [class.is-loading]="loading()">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Zone</th>
+                <th>Type</th>
+                <th>Statut</th>
+                <th class="num">Surface</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (z of filtered(); track z.id) {
+                <tr class="row-click" [class.selected]="z.id === selectedId()" tabindex="0" (click)="select(z)" (keydown.enter)="select(z)">
+                  <td>
+                    <div class="zone-cell">
+                      <span class="zone-dot" [style.background]="z.color"></span>
+                      <div>
+                        <div class="zone-name">{{ z.name }}</div>
+                        <div class="zone-meta">
+                          <code class="code-chip">{{ z.code }}</code>
+                          @if (isTemporary(z)) { <span class="tag">Temporaire</span> }
+                          @if (!z.geometry) { <span class="tag tag-warn">Sans contour</span> }
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><span class="type-tag" [attr.data-type]="z.type">{{ typeLabels[z.type] }}</span></td>
+                  <td><span [class]="'pill ' + statusPill(z.status)">{{ statusLabels[z.status] }}</span></td>
+                  <td class="num nowrap">{{ z.areaKm2 === null ? '—' : (z.areaKm2 | number: '1.0-1') + ' km²' }}</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="4" class="empty-cell">{{ loading() ? 'Chargement…' : 'Aucune zone.' }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  </div>
+</div>
+
+<!-- ─── Détail de la zone sélectionnée ─────────────────────────────────── -->
+@if (selected(); as z) {
+  <section class="detail-card">
+    <header class="detail-head">
+      <div class="detail-title">
+        <span class="zone-dot lg" [style.background]="z.color"></span>
+        <div>
+          <h2>{{ z.name }} <code class="code-chip">{{ z.code }}</code></h2>
+          <div class="detail-tags">
+            <span class="type-tag" [attr.data-type]="z.type">{{ typeLabels[z.type] }}</span>
+            <span [class]="'pill ' + statusPill(z.status)">{{ statusLabels[z.status] }}</span>
+            @if (isTemporary(z)) {
+              <span class="tag">Temporaire · {{ z.startsAt | date: 'dd/MM HH:mm' }} → {{ z.endsAt | date: 'dd/MM HH:mm' }}</span>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="detail-actions">
+        @if (canEdit(z)) {
+          <button class="btn-row" type="button" [disabled]="mapMode() !== 'view'" (click)="startDraw(z)">{{ z.geometry ? 'Modifier le contour' : 'Dessiner le contour' }}</button>
+          <button class="btn-row" type="button" (click)="openSettings(z)">Paramètres</button>
+          <button class="btn-row" type="button" (click)="openIdentity(z)">Identité</button>
+        }
+        @if (z.status === 'DRAFT' && canEdit(z)) {
+          <button class="btn-row btn-orange" type="button" [disabled]="!z.geometry" [attr.title]="z.geometry ? null : 'Dessinez d’abord le contour'" (click)="openStatus(z, 'ACTIVE')">Activer</button>
+        }
+        @if (z.status === 'ACTIVE' && canSuspend()) {
+          <button class="btn-row btn-warn" type="button" (click)="openStatus(z, 'SUSPENDED')">Suspendre</button>
+        }
+        @if (z.status === 'SUSPENDED' && canSuspend()) {
+          <button class="btn-row btn-orange" type="button" (click)="openStatus(z, 'ACTIVE')">Réactiver</button>
+        }
+        @if (z.status !== 'ARCHIVED' && canEdit(z)) {
+          <button class="btn-row btn-danger" type="button" (click)="openStatus(z, 'ARCHIVED')">Archiver</button>
+        }
+        <button class="btn-icon" type="button" aria-label="Fermer le détail" (click)="select(null)">×</button>
+      </div>
+    </header>
+
+    @if (z.status === 'SUSPENDED') {
+      <div class="state-banner warn">
+        Suspendue{{ z.suspendedUntil ? ' jusqu’au ' + (z.suspendedUntil | date: 'dd/MM/yyyy HH:mm') : ' jusqu’à nouvel ordre' }}.
+        @if (z.suspendedMessage) { Message client : « {{ z.suspendedMessage }} » }
+      </div>
+    }
+    @for (p of pendingChanges(); track p.at) {
+      <div class="state-banner info">
+        Programmé : la zone passera à « {{ statusLabels[p.to] }} » le {{ p.at | date: 'dd/MM/yyyy à HH:mm' }}.
+        @if (p.reason) { <small>Motif : {{ p.reason }}</small> }
+      </div>
+    }
+    @if (z.status === 'DRAFT') {
+      <div class="steps">
+        <span class="step" [class.done]="true">1. Créer</span>
+        <span class="step" [class.done]="!!z.geometry">2. Dessiner le contour</span>
+        <span class="step">3. Paramétrer</span>
+        <span class="step">4. Tester un trajet</span>
+        <span class="step">5. Activer</span>
+      </div>
+    }
+
+    <div class="detail-grid">
+      <div class="info-card">
+        <h3>Identité</h3>
+        <dl>
+          <div><dt>Type</dt><dd>{{ typeHints[z.type] }}</dd></div>
+          <div><dt>Priorité</dt><dd>{{ z.priority }} <small>(départage les zones de même type qui se chevauchent)</small></dd></div>
+          <div><dt>Surface</dt><dd>{{ z.areaKm2 === null ? '—' : (z.areaKm2 | number: '1.0-2') + ' km²' }}</dd></div>
+          <div><dt>Couleur</dt><dd><span class="zone-dot" [style.background]="z.color"></span>{{ z.color }}</dd></div>
+          @if (z.updatedAt) {
+            <div><dt>Mise à jour</dt><dd>{{ z.updatedAt | date: 'dd/MM/yyyy HH:mm' }}</dd></div>
+          }
+        </dl>
+      </div>
+
+      <div class="info-card">
+        <h3>Paramètres en vigueur</h3>
+        <dl>
+          @switch (z.type) {
+            @case ('SERVICE') {
+              <div><dt>Catégories</dt><dd>{{ categoriesText(z.settings.enabledCategories) }}</dd></div>
+              <div><dt>Horaires</dt><dd>{{ hours(z.settings.openingHours) }}</dd></div>
+              <div><dt>Coefficient max.</dt><dd>× {{ z.settings.surgeMax ?? '—' }}</dd></div>
+              <div><dt>Rayon de recherche</dt><dd>{{ z.settings.driverSearchRadiusM != null ? (z.settings.driverSearchRadiusM | number: '1.0-0') + ' m' : '—' }}</dd></div>
+              <div><dt>Arrivée hors zone</dt><dd>
+                @if (z.settings.outOfZoneDropoff === 'ALLOW') {
+                  Acceptée avec retour à vide{{ z.settings.outOfZoneMaxKm ? ', ' + z.settings.outOfZoneMaxKm + ' km max.' : ', sans limite' }}
+                } @else {
+                  Refusée
+                }
+              </dd></div>
+              <div><dt>Supplément inter-zones</dt><dd>{{ amounts(z.settings.interZoneSurcharge) }}</dd></div>
+            }
+            @case ('SPECIAL') {
+              <div><dt>Supplément</dt><dd>{{ amounts(z.settings.surcharges) }}@if (z.settings.surchargeScope) { <small> · {{ scopeLabels[z.settings.surchargeScope] }}</small> }</dd></div>
+              <div><dt>Point de rendez-vous</dt><dd>{{ point(z.settings.pickupPoint) }}@if (z.settings.pickupMessage) { <small> · « {{ z.settings.pickupMessage }} »</small> }</dd></div>
+              <div><dt>File d'attente</dt><dd>{{ z.settings.driverQueueEnabled ? 'Activée' : 'Non' }}</dd></div>
+              <div><dt>Hors zone de service</dt><dd>{{ z.settings.allowsOrderOutsideService ? 'Commande autorisée' : 'Commande refusée' }}</dd></div>
+            }
+            @case ('RESTRICTED') {
+              <div><dt>Interdiction</dt><dd>{{ z.settings.restriction ? restrictionLabels[z.settings.restriction] : '—' }}</dd></div>
+              <div><dt>Point de remplacement</dt><dd>{{ point(z.settings.replacementPoint) }}</dd></div>
+              <div><dt>Message</dt><dd>{{ z.settings.replacementMessage || '—' }}</dd></div>
+            }
+          }
+        </dl>
+        @if (z.type === 'SERVICE') {
+          <p class="hint">Grilles tarifaires (jour, nuit, week-end) et commission de la zone : <a routerLink="/tarification">Tarifs et commission</a>.</p>
+        }
+      </div>
+
+      @if (z.type !== 'RESTRICTED') {
+        <div class="info-card">
+          <h3>Dispatch</h3>
+          <dl>
+            <div>
+              <dt>Zones voisines</dt>
+              <dd>
+                @for (n of neighborsOf(z); track n.id) {
+                  <span class="zone-chip" [class.inactive]="n.inactive" [attr.title]="n.inactive ? 'Zone non active : ses chauffeurs ne sont pas sollicités' : null">
+                    <span class="zone-dot" [style.background]="n.color"></span>{{ n.name }}
+                  </span>
+                } @empty {
+                  Aucune
+                }
+              </dd>
+            </div>
+            @if (solicitedBy(z); as others) {
+              @if (others.length) {
+                <div>
+                  <dt>Sollicitée par</dt>
+                  <dd>
+                    @for (o of others; track o.id) {
+                      <span class="zone-chip"><span class="zone-dot" [style.background]="o.color"></span>{{ o.name }}</span>
+                    }
+                  </dd>
+                </div>
+              }
+            }
+            @if (z.settings.driverSearchRadiusM != null) {
+              <div><dt>Rayon de recherche</dt><dd>{{ z.settings.driverSearchRadiusM | number: '1.0-0' }} m</dd></div>
+            }
+          </dl>
+          <p class="hint">
+            @if (z.type === 'SPECIAL' && z.settings.driverQueueEnabled) {
+              La course est d'abord proposée au premier chauffeur de la file d'attente ; les chauffeurs des zones voisines peuvent aussi être sollicités.
+            } @else {
+              Les chauffeurs des zones voisines peuvent être sollicités pour un départ dans cette zone.
+            }
+          </p>
+          @if (canManage() && z.status !== 'ARCHIVED') {
+            <button class="btn-row" type="button" (click)="openNeighbors(z)">Modifier les voisines</button>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="history">
+      <h3>Historique</h3>
+      @if (historyError()) {
+        <div class="state-banner" role="alert">{{ historyError() }}</div>
+      } @else {
+        <ol class="timeline">
+          @for (h of history(); track $index) {
+            <li [class.current]="h.current">
+              <span class="tl-date">{{ h.date ? (h.date | date: 'dd/MM/yyyy HH:mm') : '—' }}</span>
+              <span class="tl-label">
+                {{ h.label }}@if (h.current) { <span class="tag">En vigueur</span> }
+                @if (h.changes.length) { <small class="tl-changes">{{ h.changes.join(', ') }}</small> }
+              </span>
+              <span class="tl-reason">{{ h.reason || '' }}@if (h.by) { <small> · {{ h.by }}</small> }</span>
+            </li>
+          } @empty {
+            <li class="tl-empty">{{ historyLoading() ? 'Chargement…' : 'Aucune modification.' }}</li>
+          }
+        </ol>
+      }
+    </div>
+  </section>
+}
+
+<!-- ─── Fenêtres ───────────────────────────────────────────────────────── -->
+@if (dialog(); as d) {
+  <div class="modal-backdrop" (click)="closeDialog()">
+    <form class="modal" [class.wide]="d.kind === 'settings' || d.kind === 'create'" role="dialog" aria-modal="true" aria-labelledby="dlg-title" (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); submit()">
+      @switch (d.kind) {
+        @case ('create') {
+          <h2 id="dlg-title" class="modal-title">Nouvelle zone</h2>
+          <p class="modal-sub">La zone est créée en brouillon. Vous dessinerez ensuite son contour sur la carte.</p>
+          <span class="form-label">Type</span>
+          <div class="choice-list">
+            @for (t of types; track t) {
+              <label class="choice" [class.selected]="fType() === t">
+                <input type="radio" name="zone-type" [checked]="fType() === t" (change)="fType.set(t)" />
+                <span><strong>{{ typeLabels[t] }}</strong><small>{{ typeHints[t] }}</small></span>
+              </label>
+            }
+          </div>
+          <p class="modal-sub"><strong>Paramètres · {{ typeLabels[fType()] }}</strong> — exigés par l'API avant le tracé du contour.</p>
+          <ng-container *ngTemplateOutlet="settingsFields; context: { $implicit: fType() }" />
+        }
+        @case ('identity') {
+          <h2 id="dlg-title" class="modal-title">Identité de la zone</h2>
+          <p class="modal-sub">{{ typeLabels[d.zone.type] }} · le type ne se change pas.</p>
+        }
+        @case ('status') {
+          <h2 id="dlg-title" class="modal-title">
+            @switch (d.status) {
+              @case ('ACTIVE') { {{ d.zone.status === 'SUSPENDED' ? 'Réactiver' : 'Activer' }} {{ d.zone.name }} }
+              @case ('SUSPENDED') { Suspendre {{ d.zone.name }} }
+              @default { Archiver {{ d.zone.name }} }
+            }
+          </h2>
+          <p class="modal-sub">
+            @switch (d.status) {
+              @case ('ACTIVE') { La zone devient effective : commandes possibles selon ses horaires, visible dans l'app chauffeur. }
+              @case ('SUSPENDED') { Les nouvelles commandes sont refusées avec votre message ; les courses en cours continuent. }
+              @default { La zone n'est plus utilisée. Elle reste conservée pour l'historique des courses. }
+            }
+          </p>
+          @if (d.status === 'SUSPENDED') {
+            <label class="form-label" for="f-message">Message affiché aux clients</label>
+            <input id="f-message" class="form-input" type="text" [value]="fMessage()" (input)="fMessage.set($any($event.target).value)" />
+            <label class="form-label" for="f-until">Réactivation automatique <small>(vide = jusqu'à nouvel ordre)</small></label>
+            <input id="f-until" class="form-input" type="datetime-local" [value]="fUntil()" (input)="fUntil.set($any($event.target).value)" />
+          }
+          @if (d.zone.status !== 'SUSPENDED' || d.status !== 'ACTIVE') {
+            <label class="form-label" for="f-at">Programmer le changement <small>(vide = immédiat)</small></label>
+            <input id="f-at" class="form-input" type="datetime-local" [value]="fAt()" (input)="fAt.set($any($event.target).value)" />
+          }
+        }
+        @case ('neighbors') {
+          <h2 id="dlg-title" class="modal-title">Zones voisines · {{ d.zone.name }}</h2>
+          <p class="modal-sub">
+            Zones dont les chauffeurs peuvent être sollicités pour un départ ici. La relation est dans un seul sens :
+            cocher une zone ne l'autorise pas à solliciter les chauffeurs de {{ d.zone.name }}.
+          </p>
+          <div class="choice-list">
+            @for (n of neighborCandidates(); track n.id) {
+              @if (n.id !== d.zone.id) {
+                <label class="choice" [class.selected]="fNeighbors().includes(n.id)">
+                  <input type="checkbox" [checked]="fNeighbors().includes(n.id)" (change)="toggleNeighbor(n.id, $any($event.target).checked)" />
+                  <span class="zone-dot" [style.background]="n.color"></span>
+                  <span>
+                    <strong>{{ n.name }}</strong>
+                    <small>{{ n.code }} · {{ typeLabels[n.type] }} · {{ statusLabels[n.status] }}@if (n.status !== 'ACTIVE') { — sollicitée seulement une fois active }</small>
+                  </span>
+                </label>
+              }
+            }
+          </div>
+          @if (neighborCandidates().length <= 1) {
+            <p class="hint">Aucune autre zone de service ou spéciale.</p>
+          }
+          <p class="hint">{{ fNeighbors().length }} zone{{ fNeighbors().length > 1 ? 's' : '' }} sélectionnée{{ fNeighbors().length > 1 ? 's' : '' }}.</p>
+        }
+        @case ('settings') {
+          <h2 id="dlg-title" class="modal-title">Paramètres · {{ d.zone.name }}</h2>
+          <p class="modal-sub">{{ typeHints[d.zone.type] }} Les courses déjà commandées gardent leurs paramètres.</p>
+          <ng-container *ngTemplateOutlet="settingsFields; context: { $implicit: d.zone.type }" />
+        }
+      }
+
+      @if (d.kind === 'create' || d.kind === 'identity') {
+        <div class="form-grid">
+          <label class="form-label">Code
+            <input class="form-input mono" type="text" maxlength="16" placeholder="AIBD" [value]="fCode()" (input)="fCode.set($any($event.target).value.toUpperCase())" />
+          </label>
+          <label class="form-label">Priorité
+            <input class="form-input" inputmode="numeric" [value]="fPriority()" (input)="fPriority.set($any($event.target).value)" />
+          </label>
+        </div>
+        <label class="form-label">Nom
+          <input class="form-input" type="text" placeholder="Aéroport AIBD" [value]="fName()" (input)="fName.set($any($event.target).value)" />
+        </label>
+        <label class="form-label">Couleur d'affichage
+          <span class="color-row">
+            <input type="color" [value]="fColor()" (input)="fColor.set($any($event.target).value)" aria-label="Couleur" />
+            <code>{{ fColor().toUpperCase() }}</code>
+          </span>
+        </label>
+        <label class="check">
+          <input type="checkbox" [checked]="fTemporary()" [disabled]="!canManage()" (change)="fTemporary.set($any($event.target).checked)" />
+          Zone temporaire <small>(match, concert : s'active et s'archive seule)</small>
+        </label>
+        @if (fTemporary()) {
+          <div class="form-grid">
+            <label class="form-label">Début
+              <input class="form-input" type="datetime-local" [value]="fStartsAt()" (input)="fStartsAt.set($any($event.target).value)" />
+            </label>
+            <label class="form-label">Fin
+              <input class="form-input" type="datetime-local" [value]="fEndsAt()" (input)="fEndsAt.set($any($event.target).value)" />
+            </label>
+          </div>
+        }
+      }
+
+      <label class="form-label" for="dlg-reason">Motif <small>(inscrit au journal d'audit)</small></label>
+      <input id="dlg-reason" class="form-input" type="text" [value]="reason()" (input)="reason.set($any($event.target).value)" />
+
+      @if (dialogError()) {
+        <div class="state-banner" role="alert">{{ dialogError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-row" type="button" [disabled]="busy()" (click)="closeDialog()">Annuler</button>
+        <button class="btn-row" type="submit" [class.btn-orange]="d.kind !== 'status' || d.status === 'ACTIVE'" [class.btn-danger]="d.kind === 'status' && d.status !== 'ACTIVE'" [disabled]="busy()">
+          {{ busy() ? 'Enregistrement…' : d.kind === 'create' ? 'Créer en brouillon' : 'Confirmer' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
+<ng-template #settingsFields let-type>
+  @switch (type) {
+    @case ('SERVICE') {
+      <span class="form-label">Catégories proposées</span>
+      <div class="check-row">
+        @for (c of categories; track c.code) {
+          <label class="check"><input type="checkbox" [checked]="form().categories.includes(c.code)" (change)="toggleCategory(c.code, $any($event.target).checked)" /> {{ c.label }}</label>
+        }
+      </div>
+      <div class="form-grid">
+        <label class="form-label">Coefficient maximum
+          <div class="input-suffix"><input class="form-input" inputmode="decimal" [value]="form().surgeMax" (input)="setForm('surgeMax', $any($event.target).value)" /><span>×</span></div>
+        </label>
+        <label class="form-label">Rayon de recherche des chauffeurs
+          <div class="input-suffix"><input class="form-input" inputmode="numeric" [value]="form().radiusM" (input)="setForm('radiusM', $any($event.target).value)" /><span>m</span></div>
+        </label>
+      </div>
+  
+      <span class="form-label">Horaires d'ouverture</span>
+      <label class="check"><input type="checkbox" [checked]="form().permanent" (change)="setForm('permanent', $any($event.target).checked)" /> Ouverte en permanence</label>
+      @if (!form().permanent) {
+        @for (s of form().slots; track $index; let i = $index) {
+          <div class="slot">
+            <div class="days">
+              @for (day of days; track day.n) {
+                <button type="button" class="day" [class.active]="s.days.includes(day.n)" [attr.aria-pressed]="s.days.includes(day.n)" (click)="toggleSlotDay(i, day.n)">{{ day.label }}</button>
+              }
+            </div>
+            <input class="form-input time" type="time" aria-label="Début" [value]="s.from" (input)="setSlotTime(i, 'from', $any($event.target).value)" />
+            <span>→</span>
+            <input class="form-input time" type="time" aria-label="Fin" [value]="s.to" (input)="setSlotTime(i, 'to', $any($event.target).value)" />
+            <button class="btn-icon" type="button" aria-label="Supprimer la plage" [disabled]="form().slots.length === 1" (click)="removeSlot(i)">×</button>
+          </div>
+        }
+        <button class="btn-link small" type="button" (click)="addSlot()">+ Ajouter une plage</button>
+        <p class="hint">Une fin avant le début passe minuit (ex. 06:00 → 02:00).</p>
+      }
+  
+      <span class="form-label">Arrivée hors zone</span>
+      <div class="segmented">
+        <button type="button" [class.active]="form().outOfZone === 'REFUSE'" (click)="setForm('outOfZone', 'REFUSE')">Refuser</button>
+        <button type="button" [class.active]="form().outOfZone === 'ALLOW'" (click)="setForm('outOfZone', 'ALLOW')">Accepter avec retour à vide</button>
+      </div>
+      @if (form().outOfZone === 'ALLOW') {
+        <label class="form-label">Distance maximale hors zone <small>(vide = sans limite)</small>
+          <div class="input-suffix"><input class="form-input" inputmode="decimal" [value]="form().outMaxKm" (input)="setForm('outMaxKm', $any($event.target).value)" /><span>km</span></div>
+        </label>
+      }
+  
+      <span class="form-label">Supplément inter-zones <small>(arrivée dans une autre zone de service)</small></span>
+      <div class="form-grid">
+        @for (c of categories; track c.code) {
+          <label class="form-label">{{ c.label }}
+            <div class="input-suffix"><input class="form-input" inputmode="numeric" [value]="form().interZone[c.code]" (input)="setFormAmount('interZone', c.code, $any($event.target).value)" /><span>F</span></div>
+          </label>
+        }
+      </div>
+    }
+    @case ('SPECIAL') {
+      <span class="form-label">Supplément par catégorie <small>(non multiplié par le coefficient)</small></span>
+      <div class="form-grid">
+        @for (c of categories; track c.code) {
+          <label class="form-label">{{ c.label }}
+            <div class="input-suffix"><input class="form-input" inputmode="numeric" [value]="form().surcharges[c.code]" (input)="setFormAmount('surcharges', c.code, $any($event.target).value)" /><span>F</span></div>
+          </label>
+        }
+      </div>
+      <span class="form-label">Appliqué</span>
+      <div class="segmented">
+        @for (s of scopes; track s) {
+          <button type="button" [class.active]="form().surchargeScope === s" (click)="setForm('surchargeScope', s)">{{ scopeLabels[s] }}</button>
+        }
+      </div>
+      <span class="form-label">Point de rendez-vous imposé <small>(à l'intérieur du contour)</small></span>
+      <div class="form-grid">
+        <input class="form-input" inputmode="decimal" placeholder="Latitude" aria-label="Latitude du point de rendez-vous" [value]="form().pickupLat" (input)="setForm('pickupLat', $any($event.target).value)" />
+        <input class="form-input" inputmode="decimal" placeholder="Longitude" aria-label="Longitude du point de rendez-vous" [value]="form().pickupLng" (input)="setForm('pickupLng', $any($event.target).value)" />
+      </div>
+      <label class="form-label">Message au client
+        <input class="form-input" type="text" placeholder="Rendez-vous au parking P2" [value]="form().pickupMessage" (input)="setForm('pickupMessage', $any($event.target).value)" />
+      </label>
+      <label class="check"><input type="checkbox" [checked]="form().queue" (change)="setForm('queue', $any($event.target).checked)" /> File d'attente des chauffeurs <small>(aire d'attente : tout le contour)</small></label>
+      <label class="check"><input type="checkbox" [checked]="form().allowsOutside" (change)="setForm('allowsOutside', $any($event.target).checked)" /> Autoriser la commande hors zone de service</label>
+    }
+    @case ('RESTRICTED') {
+      <span class="form-label">Interdiction</span>
+      <div class="segmented">
+        @for (s of scopes; track s) {
+          <button type="button" [class.active]="form().restriction === s" (click)="setForm('restriction', s)">{{ restrictionLabels[s] }}</button>
+        }
+      </div>
+      <span class="form-label">Point de remplacement <small>(hors du contour)</small></span>
+      <div class="form-grid">
+        <input class="form-input" inputmode="decimal" placeholder="Latitude" aria-label="Latitude du point de remplacement" [value]="form().replLat" (input)="setForm('replLat', $any($event.target).value)" />
+        <input class="form-input" inputmode="decimal" placeholder="Longitude" aria-label="Longitude du point de remplacement" [value]="form().replLng" (input)="setForm('replLng', $any($event.target).value)" />
+      </div>
+      <label class="form-label">Message au client
+        <input class="form-input" type="text" placeholder="Dépose à l'entrée principale du port" [value]="form().replMessage" (input)="setForm('replMessage', $any($event.target).value)" />
+      </label>
+    }
+  }
+</ng-template>

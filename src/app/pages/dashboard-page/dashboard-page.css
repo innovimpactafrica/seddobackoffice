@@ -1,0 +1,389 @@
+.dash-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #191613;
+}
+
+/* En-tête */
+.dash-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 2px;
+}
+
+.dash-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: #191613;
+  letter-spacing: -0.01em;
+}
+
+.dash-subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #7a736c;
+}
+
+.pill-ok {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #eaf6ee;
+  color: #128a4f;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* 5 KPIs */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+
+.kpi-card {
+  background: #ffffff;
+  border: 1px solid #ede8e3;
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.kpi-label {
+  font-size: 12px;
+  color: #7a736c;
+  font-weight: 500;
+}
+
+.kpi-val {
+  font-size: 28px;
+  font-weight: 800;
+  color: #191613;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.kpi-sub {
+  font-size: 12px;
+  color: #7a736c;
+  margin-top: 2px;
+}
+
+:host ::ng-deep .up {
+  color: #128a4f;
+  font-weight: 700;
+}
+
+:host ::ng-deep .warn {
+  color: #b26a00;
+  font-weight: 700;
+}
+
+/* Grilles 2 colonnes (Row 1 & Row 2) */
+.g2 {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #ede8e3;
+  border-radius: 10px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.card-title {
+  margin: 0 0 14px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #191613;
+}
+
+/* Histogramme Chart */
+.chart-box {
+  position: relative;
+  height: 195px;
+  width: 100%;
+}
+
+.axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: #8c8379;
+  margin-top: 6px;
+  padding: 0 4px;
+}
+
+/* Section À traiter */
+.alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  justify-content: space-between;
+  flex: 1;
+}
+
+.alert-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+.stripe {
+  width: 3.5px;
+  height: 32px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.alert-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.alert-info strong {
+  display: block;
+  font-size: 12.8px;
+  font-weight: 700;
+  color: #191613;
+  line-height: 1.25;
+}
+
+.alert-sub {
+  font-size: 11.8px;
+  color: #7a736c;
+  margin-top: 2px;
+  line-height: 1.25;
+}
+
+/* Boutons d'action */
+.bbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease;
+}
+
+.bbtn:hover {
+  opacity: 0.85;
+}
+
+.btn-s {
+  background: #efece8;
+  color: #191613;
+}
+
+.btn-r {
+  background: #fbe6e5;
+  color: #b0241f;
+}
+
+/* Tableau Argent du jour */
+table.t {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+table.t th {
+  padding: 8px 0;
+  color: #7a736c;
+  font-weight: 500;
+  border-bottom: 1px solid #ede8e3;
+  text-align: left;
+}
+
+table.t td {
+  padding: 8.5px 0;
+  color: #191613;
+  border-bottom: 1px solid #f5f2ee;
+  font-variant-numeric: tabular-nums;
+}
+
+table.t tr:last-child td {
+  border-bottom: none;
+}
+
+.card-footer-btn {
+  margin-top: 14px;
+}
+
+.card-footer-btn .bbtn {
+  padding: 6px 16px;
+  font-size: 12.5px;
+}
+
+/* Carte Live & Google Maps */
+.map-card {
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+  min-height: 290px;
+  height: 100%;
+}
+
+.pill-run {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  background: #e8f1fc;
+  color: #2060a0;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 11px;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.google-maps-box {
+  width: 100%;
+  height: 100%;
+  min-height: 290px;
+  background: #f0ede8;
+}
+
+.vector-map-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #e2f0f8;
+}
+
+.mapsvg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Marqueurs voitures */
+.car-marker {
+  position: absolute;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  z-index: 5;
+  transform-origin: center center;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.car-marker:hover {
+  filter: drop-shadow(0 2px 6px rgba(255, 90, 0, 0.6));
+  z-index: 8;
+}
+
+/* Popup info chauffeur */
+.vehicle-info-pop {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  background: #ffffff;
+  border: 1px solid #ede8e3;
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 15;
+}
+
+.pop-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.pop-plate {
+  font-family: monospace;
+  font-size: 11px;
+  padding: 1px 5px;
+  background: #efece8;
+  border-radius: 4px;
+  color: #555;
+}
+
+.pop-close {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #888;
+  padding: 0;
+  line-height: 1;
+}
+
+.pop-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11.5px;
+  color: #7a736c;
+  margin-top: 5px;
+}
+
+.status-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 11px;
+  background: #eef7ed;
+  color: #128a4f;
+}
+
+.status-tag.tag-ride {
+  background: #fff4eb;
+  color: #ff5a00;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .kpis {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .g2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .kpis {
+    grid-template-columns: 1fr;
+  }
+  .dash-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

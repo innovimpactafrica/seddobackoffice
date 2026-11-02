@@ -1,0 +1,109 @@
+<div class="toolbar-row">
+  <p class="panel-intro">
+    Pièces demandées à l'inscription, dans l'ordre des écrans de l'app chauffeur.
+    Une pièce obligatoire ajoutée devra être fournie par les dossiers en cours avant leur envoi ou leur validation.
+  </p>
+  @if (canEdit()) {
+    <button class="btn-action btn-primary" type="button" (click)="openCreate()">Ajouter une pièce</button>
+  }
+</div>
+
+@if (notice()) {
+  <div class="state-banner state-ok" role="status">{{ notice() }}</div>
+}
+@if (error()) {
+  <div class="state-banner" role="alert">{{ error() }} <button class="btn-link" type="button" (click)="load()">Réessayer</button></div>
+}
+
+@if (inactiveCount()) {
+  <label class="check">
+    <input type="checkbox" [checked]="showInactive()" (change)="showInactive.set($any($event.target).checked)" />
+    Afficher les pièces désactivées ({{ inactiveCount() }})
+  </label>
+}
+
+@for (group of byStep(); track group.n) {
+  <section class="ch-section-card">
+    <h3 class="ch-section-title">Étape {{ group.n }} · {{ group.label }}</h3>
+    <table class="ch-sub-table">
+      <thead>
+        <tr>
+          <th>Pièce</th>
+          <th>Consigne affichée au chauffeur</th>
+          <th>Obligatoire</th>
+          <th>Date d'expiration</th>
+          @if (canEdit()) { <th></th> }
+        </tr>
+      </thead>
+      <tbody>
+        @for (t of group.types; track t.code) {
+          <tr [class.inactive]="!t.active">
+            <td>
+              <strong>{{ t.label }}</strong>
+              <div class="sub-line mono">{{ t.code }}@if (!t.active) { · désactivée }</div>
+            </td>
+            <td class="instruction">{{ t.instruction }}</td>
+            <td><span class="pill" [class.pill-on]="t.required">{{ t.required ? 'Oui' : 'Facultative' }}</span></td>
+            <td><span class="pill" [class.pill-on]="t.needsExpiry">{{ t.needsExpiry ? 'Demandée' : 'Non' }}</span></td>
+            @if (canEdit()) {
+              <td class="num"><button class="btn-action btn-secondary small" type="button" (click)="openEdit(t)">Modifier</button></td>
+            }
+          </tr>
+        } @empty {
+          <tr><td [attr.colspan]="canEdit() ? 5 : 4" class="empty-cell">{{ loading() ? 'Chargement…' : 'Aucune pièce.' }}</td></tr>
+        }
+      </tbody>
+    </table>
+  </section>
+}
+
+@if (dialogOpen()) {
+  <div class="modal-backdrop" (click)="closeDialog()">
+    <form class="modal" role="dialog" aria-modal="true" aria-labelledby="type-title" (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); submit()">
+      <h2 id="type-title" class="modal-title">{{ editing() ? 'Modifier · ' + editing()!.label : 'Ajouter une pièce' }}</h2>
+      <p class="modal-sub">
+        @if (editing()) {
+          Pas de suppression : désactivez la pièce pour ne plus la proposer. Les pièces déjà envoyées restent au dossier.
+        } @else {
+          La pièce apparaît aussitôt dans l'inscription des chauffeurs, à l'écran de son étape.
+        }
+      </p>
+
+      @if (!editing()) {
+        <label class="form-label" for="type-code">Code <small>(non modifiable ensuite)</small></label>
+        <input id="type-code" class="form-input mono" type="text" placeholder="RESIDENCE_CERTIFICATE" [value]="form().code" (input)="setField('code', $any($event.target).value.toUpperCase())" />
+      }
+      <label class="form-label" for="type-label">Libellé</label>
+      <input id="type-label" class="form-input" type="text" placeholder="Attestation de résidence" [value]="form().label" (input)="setField('label', $any($event.target).value)" />
+      <label class="form-label" for="type-instruction">Consigne de l'écran de prise de vue</label>
+      <input id="type-instruction" class="form-input" type="text" placeholder="Placez l'attestation dans le cadre" [value]="form().instruction" (input)="setField('instruction', $any($event.target).value)" />
+
+      <span class="form-label">Écran</span>
+      <div class="segmented">
+        @for (s of steps; track s.n) {
+          <button type="button" [class.active]="form().step === s.n" (click)="setField('step', s.n)">Étape {{ s.n }} · {{ s.label }}</button>
+        }
+      </div>
+
+      <label class="check"><input type="checkbox" [checked]="form().required" (change)="setField('required', $any($event.target).checked)" /> Obligatoire pour envoyer et valider le dossier</label>
+      <label class="check"><input type="checkbox" [checked]="form().needsExpiry" (change)="setField('needsExpiry', $any($event.target).checked)" /> Date d'expiration demandée <small>(rappels J-30, J-7, puis suspension)</small></label>
+      @if (editing()) {
+        <label class="check"><input type="checkbox" [checked]="form().active" (change)="setField('active', $any($event.target).checked)" /> Proposée aux chauffeurs</label>
+      }
+
+      <label class="form-label" for="type-order">Ordre d'affichage <small>(vide = à la fin)</small></label>
+      <input id="type-order" class="form-input" inputmode="numeric" [value]="form().sortOrder" (input)="setField('sortOrder', $any($event.target).value)" />
+
+      <label class="form-label" for="type-reason">Motif <small>(inscrit au journal d'audit)</small></label>
+      <input id="type-reason" class="form-input" type="text" [value]="reason()" (input)="reason.set($any($event.target).value)" />
+
+      @if (dialogError()) {
+        <div class="state-banner" role="alert">{{ dialogError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-action btn-secondary" type="button" [disabled]="busy()" (click)="closeDialog()">Annuler</button>
+        <button class="btn-action btn-primary" type="submit" [disabled]="busy()">{{ busy() ? 'Enregistrement…' : 'Enregistrer' }}</button>
+      </div>
+    </form>
+  </div>
+}

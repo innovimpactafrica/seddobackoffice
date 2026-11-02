@@ -1,0 +1,41 @@
+.toolbar-row {
+  align-items: flex-start;
+}
+
+.toolbar-row + .check,
+.state-banner + .check {
+  margin-bottom: 14px;
+}
+
+.ch-sub-table {
+  min-width: 620px;
+}
+
+.ch-section-card {
+  overflow-x: auto;
+}
+
+.instruction {
+  color: #5d564f;
+  max-width: 340px;
+}
+
+tr.inactive td {
+  opacity: 0.55;
+}
+
+.pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #f1eeea;
+  color: #7a736c;
+  white-space: nowrap;
+}
+
+.pill-on {
+  background: #eaf6ee;
+  color: #128a4f;
+}

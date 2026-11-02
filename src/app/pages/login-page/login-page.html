@@ -1,0 +1,191 @@
+<div class="login-bg">
+  <main class="login-card" aria-labelledby="login-heading">
+
+    <!-- Brand -->
+    <div class="login-brand" aria-label="Seddo Backoffice">
+      <span class="brand-mark" aria-hidden="true">SEDDO</span>
+      <span class="brand-name">Backoffice</span>
+    </div>
+
+    <!-- Intro -->
+    <div class="login-intro">
+      <h1 id="login-heading">{{ step() === 'password' ? 'Nouveau mot de passe' : 'Connexion' }}</h1>
+      @if (step() === 'credentials') {
+        <p>Connectez-vous avec votre compte administrateur.</p>
+      } @else if (step() === 'password') {
+        <p>Votre mot de passe est provisoire. Choisissez-en un nouveau pour accéder au backoffice.</p>
+      } @else {
+        <p>Un code de vérification a été envoyé à <strong>{{ challenge()?.sentTo }}</strong>.</p>
+      }
+    </div>
+
+    <!-- Erreur -->
+    @if (errorMessage()) {
+      <div class="error-banner" role="alert" aria-live="assertive">
+        <svg class="error-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <circle cx="10" cy="10" r="8"/>
+          <line x1="10" y1="6" x2="10" y2="11"/>
+          <circle cx="10" cy="14" r="0.5" fill="currentColor"/>
+        </svg>
+        {{ errorMessage() }}
+      </div>
+    }
+
+    <!-- Formulaire -->
+    <form id="login-form" (ngSubmit)="onSubmit()" novalidate>
+
+      @if (step() === 'credentials') {
+      <div class="field">
+        <label for="login-email">Adresse e-mail</label>
+        <input
+          id="login-email"
+          type="email"
+          name="email"
+          autocomplete="email"
+          placeholder="admin@seddo.sn"
+          [(ngModel)]="email"
+          [disabled]="isLoading()"
+        />
+      </div>
+
+      <div class="field">
+        <label for="login-password">Mot de passe</label>
+        <div class="password-wrap">
+          <input
+            id="login-password"
+            class="pwd"
+            [type]="showPassword() ? 'text' : 'password'"
+            name="password"
+            autocomplete="current-password"
+            placeholder="••••••••"
+            [(ngModel)]="password"
+            [disabled]="isLoading()"
+          />
+          <button
+            type="button"
+            class="toggle-password"
+            [attr.aria-label]="showPassword() ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+            [attr.aria-pressed]="showPassword()"
+            [disabled]="isLoading()"
+            (click)="showPassword.set(!showPassword())"
+          >
+            @if (showPassword()) {
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            } @else {
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            }
+          </button>
+        </div>
+      </div>
+
+      } @else if (step() === 'password') {
+      <div class="field">
+        <label for="pwd-current">Mot de passe provisoire</label>
+        <input
+          id="pwd-current"
+          class="pwd"
+          [type]="showPasswords() ? 'text' : 'password'"
+          name="current"
+          autocomplete="current-password"
+          [value]="currentPassword()"
+          [disabled]="isLoading()"
+          (input)="currentPassword.set($any($event.target).value)"
+        />
+      </div>
+
+      <div class="field">
+        <label for="pwd-new">Nouveau mot de passe</label>
+        <input
+          id="pwd-new"
+          class="pwd"
+          [type]="showPasswords() ? 'text' : 'password'"
+          name="new"
+          autocomplete="new-password"
+          [value]="newPassword()"
+          [disabled]="isLoading()"
+          (input)="newPassword.set($any($event.target).value)"
+        />
+      </div>
+
+      <div class="field">
+        <label for="pwd-confirm">Confirmer le nouveau mot de passe</label>
+        <input
+          id="pwd-confirm"
+          class="pwd"
+          [type]="showPasswords() ? 'text' : 'password'"
+          name="confirm"
+          autocomplete="new-password"
+          [value]="confirmPassword()"
+          [disabled]="isLoading()"
+          (input)="confirmPassword.set($any($event.target).value)"
+        />
+      </div>
+
+      <label class="show-password">
+        <input type="checkbox" [checked]="showPasswords()" (change)="showPasswords.set($any($event.target).checked)" />
+        Afficher les mots de passe
+      </label>
+
+      <ul class="pwd-rules" aria-label="Règles du mot de passe">
+        @for (rule of rules(); track rule.label) {
+          <li [class.ok]="rule.ok">{{ rule.label }}</li>
+        }
+      </ul>
+
+      } @else {
+      <div class="field">
+        <label>Code à 6 chiffres</label>
+        <div class="otp-row" role="group" aria-label="Code d'authentification à 6 chiffres">
+          @for (i of otpIndices; track i) {
+            <input
+              class="otp-cell"
+              type="text"
+              inputmode="numeric"
+              maxlength="1"
+              autocomplete="one-time-code"
+              [id]="'otp-' + i"
+              [value]="otpDigits()[i]"
+              [disabled]="isLoading()"
+              (input)="onOtpInput($event, i)"
+              (keydown)="onOtpKeydown($event, i)"
+              (paste)="onOtpPaste($event)"
+              [attr.aria-label]="'Chiffre ' + (i + 1) + ' sur 6'"
+            />
+          }
+        </div>
+      </div>
+      }
+
+      <button type="submit" id="btn-login" class="btn-submit" [class.loading]="isLoading()" [disabled]="isLoading() || (step() === 'password' && !canSubmitPassword())">
+        @if (isLoading()) {
+          <span class="spinner" aria-hidden="true"></span>
+          {{ step() === 'password' ? 'Enregistrement…' : 'Vérification en cours…' }}
+        } @else if (step() === 'credentials') {
+          Continuer
+        } @else if (step() === 'password') {
+          Enregistrer et continuer
+        } @else {
+          Se connecter
+        }
+      </button>
+
+      @if (step() === 'code') {
+        <button type="button" class="btn-back" [disabled]="isLoading()" (click)="backToCredentials()">
+          Modifier mes identifiants
+        </button>
+      }
+
+      @if (step() === 'password') {
+        <button type="button" class="btn-back" [disabled]="isLoading()" (click)="cancelPasswordChange()">
+          Annuler et se déconnecter
+        </button>
+      }
+
+    </form>
+
+    <p class="login-footer">
+      Accès réservé au réseau Seddo ou au <a href="#" tabindex="-1">VPN</a>.
+    </p>
+
+  </main>
+</div>

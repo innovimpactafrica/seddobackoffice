@@ -1,0 +1,657 @@
+/* ============================================================
+   COURSES PAGE
+   ============================================================ */
+
+:host {
+  display: block;
+  color: #191613;
+}
+
+.courses-container {
+  position: relative;
+  min-height: 100%;
+}
+
+.courses-header {
+  margin-bottom: 14px;
+}
+
+.header-title {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #191613;
+}
+
+.header-subtitle {
+  margin: 0;
+  font-size: 12.5px;
+  color: #7a736c;
+}
+
+.filters-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #e4dfd9;
+  border-radius: 7px;
+  padding: 0 11px;
+  height: 34px;
+  width: 256px;
+}
+
+.search-icon {
+  flex-shrink: 0;
+}
+
+.search-input {
+  border: none;
+  background: transparent;
+  font-size: 12.5px;
+  color: #191613;
+  outline: none;
+  width: 100%;
+}
+
+.search-input::placeholder {
+  color: #7a736c;
+}
+
+.filter-select {
+  height: 34px;
+  padding: 0 8px;
+  background: #ffffff;
+  border: 1px solid #e4dfd9;
+  border-radius: 7px;
+  font-size: 12.5px;
+  color: #191613;
+  outline: none;
+  cursor: pointer;
+}
+
+.period-label {
+  font-size: 11.5px;
+  color: #7a736c;
+  white-space: nowrap;
+}
+
+.btn-exporter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #efebe6;
+  border: none;
+  border-radius: 7px;
+  padding: 0 12px;
+  height: 32px;
+  margin-bottom: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #191613;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn-exporter:hover {
+  background: #e6e1db;
+}
+
+.table-wrapper {
+  background: #ffffff;
+  border: 1px solid #e8e3de;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.courses-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.courses-table th {
+  padding: 11px 10px;
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #7a736c;
+  border-bottom: 1px solid #ece8e3;
+  white-space: nowrap;
+}
+
+.courses-table td {
+  padding: 11px 10px;
+  border-bottom: 1px solid #f0ece8;
+  color: #191613;
+  white-space: nowrap;
+}
+
+.courses-table th:first-child,
+.courses-table td:first-child {
+  padding-left: 10px;
+}
+
+.courses-table tbody tr {
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.courses-table tbody tr:hover {
+  background: #faf8f5;
+}
+
+.courses-table tbody tr.row-selected {
+  background: #faede4;
+}
+
+.col-num strong {
+  font-weight: 700;
+}
+
+th.col-prix,
+td.col-prix {
+  text-align: right;
+}
+
+td.col-statut,
+th.col-statut {
+  padding-left: 18px;
+}
+
+.chauffeur-none {
+  color: #1f6f8b;
+  font-size: 11.5px;
+}
+
+.pill {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.st-encours { background: #e9ecfb; color: #3f4a9e; }
+.st-aucun { background: #eeeae4; color: #5d564f; }
+.st-echoue { background: #fde8e8; color: #b3261e; }
+.st-incident { background: #fdf1d6; color: #8a5a00; }
+.st-terminee { background: #e3f4e8; color: #1f7a45; }
+
+.table-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 10px;
+  font-size: 11.5px;
+  color: #7a736c;
+  border-top: 1px solid #ece8e3;
+}
+
+.pag-left,
+.pag-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pag-select {
+  height: 24px;
+  padding: 0 2px;
+  background: #ffffff;
+  border: 1px solid #e4dfd9;
+  border-radius: 4px;
+  font-size: 11.5px;
+  color: #191613;
+  outline: none;
+  cursor: pointer;
+}
+
+.pag-btn {
+  min-width: 28px;
+  height: 26px;
+  padding: 0 6px;
+  background: #ffffff;
+  border: 1px solid #e4dfd9;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #191613;
+  cursor: pointer;
+}
+
+.pag-btn:disabled {
+  color: #b9b2aa;
+  border-color: #efebe6;
+  cursor: default;
+}
+
+.pag-btn.active {
+  background: #17130f;
+  border-color: #17130f;
+  color: #ffffff;
+}
+
+.pag-btn:not(:disabled):not(.active):hover {
+  background: #f7f5f2;
+}
+
+/* ============================================================
+   SLIDE DRAWER (VOLET LATÉRAL DÉTAIL COURSE)
+   ============================================================ */
+.slide-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 440px;
+  height: 100vh;
+  background: #ffffff;
+  box-shadow: -8px 0 28px rgba(0, 0, 0, 0.08);
+  z-index: 1000;
+  padding: 24px 26px 28px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+  font-family: inherit;
+  animation: slideDrawerIn 0.22s ease-out;
+}
+
+@keyframes slideDrawerIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* En-tête du drawer */
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.dh-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dh-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #191613;
+  margin: 0;
+}
+
+
+
+
+
+.dh-close {
+  background: none;
+  border: none;
+  color: #e05020;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  font-weight: 700;
+}
+
+.dh-close:hover {
+  opacity: 0.8;
+}
+
+/* Sous-titre description */
+.drawer-subtitle {
+  font-size: 12px;
+  color: #716b65;
+  margin: 0 0 18px 0;
+}
+
+/* Métadonnées Client / Chauffeur / Trajet */
+.drawer-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.meta-item {
+  display: flex;
+  font-size: 12.5px;
+}
+
+.meta-label {
+  width: 80px;
+  color: #716b65;
+  flex-shrink: 0;
+}
+
+.meta-val {
+  color: #191613;
+}
+
+.meta-val strong {
+  font-weight: 700;
+}
+
+/* Chronologie / Timeline */
+.drawer-timeline {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+  padding-left: 2px;
+}
+
+.tl-row {
+  display: flex;
+  align-items: stretch;
+  position: relative;
+  min-height: 26px;
+}
+
+.tl-hour {
+  width: 44px;
+  font-size: 11.5px;
+  color: #191613;
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+
+.tl-spine {
+  position: relative;
+  width: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.tl-node {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #191613;
+  margin-top: 5px;
+  flex-shrink: 0;
+  z-index: 2;
+}
+
+.tl-node.node-orange {
+  background: #ff5a00;
+}
+
+.tl-track {
+  position: absolute;
+  top: 10px;
+  bottom: 0;
+  width: 1.5px;
+  background: #e0dcd7;
+  z-index: 1;
+}
+
+.tl-desc {
+  padding-left: 10px;
+  font-size: 12px;
+  color: #191613;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 10px;
+}
+
+.tl-line {
+  line-height: 1.4;
+}
+
+
+/* Répartition financière */
+.drawer-financial {
+  border-top: 1px solid #f2eee9;
+  padding-top: 16px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.fin-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+}
+
+.fin-lbl {
+  color: #444;
+}
+
+.fin-num {
+  color: #666;
+}
+
+.fin-num-bold {
+  font-weight: 700;
+  color: #191613;
+}
+
+/* Transactions Orange Money */
+.drawer-trans {
+  margin-bottom: 24px;
+}
+
+.trans-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: #191613;
+  margin: 0 0 10px;
+}
+
+.trans-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  background: #ffffff;
+}
+
+.tr-col-type {
+  font-size: 11px;
+  color: #666;
+  font-weight: 500;
+}
+
+.tr-col-ref {
+  color: #333;
+  font-size: 11.5px;
+}
+
+.tr-col-amount {
+  font-weight: 600;
+  color: #191613;
+}
+
+.tr-col-status {
+  background: #e6f7ec;
+  color: #11844b;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Boutons d'action */
+.drawer-footer-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.btn-cancel {
+  flex: 1;
+  background: #fdeeee;
+  color: #d32f2f;
+  border: none;
+  border-radius: 6px;
+  padding: 9px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: opacity 0.15s ease;
+}
+
+.btn-cancel:hover {
+  opacity: 0.85;
+}
+
+.btn-neutral {
+  flex: 1;
+  background: #f0ede9;
+  color: #2c2724;
+  border: none;
+  border-radius: 6px;
+  padding: 9px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: opacity 0.15s ease;
+}
+
+.btn-neutral:hover {
+  background: #e6e2dd;
+}
+
+.tr-col-status.tr-failed {
+  background: #fde8e8;
+  color: #b3261e;
+}
+
+/* Messages et fenêtre de motif */
+.state-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background: #fde8e8;
+  color: #b3261e;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+
+.state-banner.state-ok {
+  background: #e3f4e8;
+  color: #1f7a45;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-weight: 700;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.empty-cell {
+  text-align: center;
+  color: #7a736c;
+  padding: 24px 10px !important;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(23, 19, 15, 0.45);
+}
+
+.modal {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+}
+
+.modal-title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.modal-sub {
+  margin: 0 0 14px;
+  font-size: 12px;
+  color: #7a736c;
+}
+
+.form-label {
+  display: block;
+  margin: 10px 0 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #5d564f;
+}
+
+.form-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #e4dfd9;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-family: inherit;
+  outline: none;
+}
+
+.form-input:focus {
+  border-color: #ff5a00;
+}
+
+.form-textarea {
+  resize: vertical;
+}
+
+.modal .state-banner {
+  margin: 10px 0 0;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.btn-modal {
+  flex: 0 0 auto;
+  padding: 9px 16px;
+}

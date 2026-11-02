@@ -1,0 +1,205 @@
+@if (notice()) {
+  <div class="state-banner state-ok" role="status">{{ notice() }}</div>
+}
+@if (error()) {
+  <div class="state-banner" role="alert">{{ error() }} <button class="btn-link" type="button" (click)="load()">Réessayer</button></div>
+}
+
+@if (dossier(); as d) {
+  <div class="dossier-grid">
+    <!-- Pièces -->
+    <section class="ch-section-card">
+      <div class="card-head">
+        <h3 class="ch-section-title">Pièces du dossier</h3>
+        @if (toReview()) {
+          <span class="pill pill-warn">{{ toReview() }} à vérifier</span>
+        }
+      </div>
+
+      @if (d.missing.length) {
+        <div class="missing">
+          <strong>{{ d.missing.length }} pièce{{ d.missing.length > 1 ? 's' : '' }} obligatoire{{ d.missing.length > 1 ? 's' : '' }} manquante{{ d.missing.length > 1 ? 's' : '' }}</strong>
+          <span>
+            @for (code of d.missing; track code; let last = $last) {
+              {{ typeLabel(code) }}{{ last ? '' : ' · ' }}
+            }
+          </span>
+        </div>
+      }
+
+      @if (documents().length) {
+        <table class="ch-sub-table">
+          <thead>
+            <tr><th>Pièce</th><th>Envoyée le</th><th>Expiration</th><th>Statut</th><th></th></tr>
+          </thead>
+          <tbody>
+            @for (doc of documents(); track doc.id) {
+              <tr>
+                <td>
+                  <strong>{{ typeLabel(doc.type, doc.label) }}</strong>
+                  @if (doc.status === 'REJECTED' && doc.rejectionReason) {
+                    <div class="sub-line">Motif : {{ doc.rejectionReason }}</div>
+                  }
+                </td>
+                <td class="sub-line">{{ doc.uploadedAt ? (doc.uploadedAt | date: 'd MMM y') : '—' }}</td>
+                <td>
+                  @if (doc.expiresAt) {
+                    <span [class.warn-line]="expiry(doc) === 'soon'" [class.err-line]="expiry(doc) === 'past'">{{ doc.expiresAt | date: 'd MMM y' }}</span>
+                  } @else { <span class="sub-line">—</span> }
+                </td>
+                <td><span class="pill" [class]="'pill ' + docStatus(doc.status).css">{{ docStatus(doc.status).label }}</span></td>
+                <td class="num">
+                  <button class="btn-action btn-secondary small" type="button" (click)="openDocument(doc)">
+                    {{ doc.status === 'PENDING' && canReview() ? 'Contrôler' : 'Voir' }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else {
+        <p class="muted">Aucune pièce envoyée.</p>
+      }
+    </section>
+
+    <div class="side">
+      <!-- Rendez-vous -->
+      <section class="ch-section-card">
+        <div class="card-head">
+          <h3 class="ch-section-title">Rendez-vous en agence</h3>
+          @if (canReview()) {
+            <button class="btn-action btn-secondary small" type="button" (click)="openAppointment()">{{ d.form.appointmentAt ? 'Modifier' : 'Fixer' }}</button>
+          }
+        </div>
+        @if (d.form.appointmentAt) {
+          <p class="big">{{ d.form.appointmentAt | date: "EEEE d MMMM y 'à' HH:mm" }}</p>
+          <p class="sub-line">{{ d.form.appointmentPlace ?? 'Adresse de l’agence par défaut' }}</p>
+          @if (d.form.appointmentNote) { <p class="sub-line">{{ d.form.appointmentNote }}</p> }
+        } @else {
+          <p class="muted">Aucun rendez-vous : entretien et contrôle du véhicule à fixer.</p>
+        }
+        @if (d.form.appointmentChangeRequest; as r) {
+          <div class="request">
+            <strong>Le chauffeur demande un autre créneau</strong>
+            @if (r.reason) { <span>« {{ r.reason }} »</span> }
+            @if (r.preferredAt) { <span>Souhaité : {{ r.preferredAt | date: "EEE d MMM 'à' HH:mm" }}</span> }
+          </div>
+        }
+      </section>
+
+      <!-- Véhicule -->
+      <section class="ch-section-card">
+        <div class="card-head">
+          <h3 class="ch-section-title">Véhicule</h3>
+          @if (d.vehicle?.status === 'PENDING') {
+            <span class="pill pill-warn">À contrôler</span>
+          } @else if (d.vehicle?.status === 'ACTIVE') {
+            <span class="pill pill-on">Validé</span>
+          }
+        </div>
+        @if (d.vehicle; as v) {
+          <dl class="facts">
+            <div><dt>Véhicule</dt><dd>{{ [v.make, v.model, v.color].join(' ') }}</dd></div>
+            <div><dt>Plaque</dt><dd class="mono">{{ v.plate ?? '—' }}</dd></div>
+            <div><dt>Catégorie</dt><dd>{{ v.category ?? '—' }}</dd></div>
+            <div><dt>Année</dt><dd>{{ v.year ?? '—' }}</dd></div>
+            <div><dt>Places</dt><dd>{{ v.seats ?? '—' }}</dd></div>
+          </dl>
+        } @else {
+          <p class="muted">Pas encore de véhicule déclaré.</p>
+        }
+      </section>
+
+      <!-- Formulaire -->
+      <section class="ch-section-card">
+        <h3 class="ch-section-title">Informations du chauffeur</h3>
+        <dl class="facts">
+          <div><dt>Date de naissance</dt><dd>{{ d.form.birthDate ? (d.form.birthDate | date: 'd MMM y') : '—' }}</dd></div>
+          <div><dt>Adresse</dt><dd>{{ d.form.address ?? '—' }}</dd></div>
+          <div>
+            <dt>Contact d'urgence</dt>
+            <dd>
+              @if (d.form.emergencyContact; as c) {
+                {{ c.name ?? '' }}@if (c.relation) { ({{ c.relation }}) }@if (c.phone) { · {{ c.phone }} }
+              } @else { — }
+            </dd>
+          </div>
+          <div><dt>Charte</dt><dd>{{ d.form.charterSignedAt ? 'Version ' + d.form.charterVersion + ', signée le ' + (d.form.charterSignedAt | date: 'd MMM y') : 'Non signée' }}</dd></div>
+          <div><dt>Dossier envoyé</dt><dd>{{ d.form.submittedAt ? (d.form.submittedAt | date: 'd MMM y HH:mm') : 'Pas encore' }}</dd></div>
+        </dl>
+        @if (d.form.reviewNote) {
+          <p class="sub-line review-note">Note de contrôle : {{ d.form.reviewNote }}</p>
+        }
+      </section>
+    </div>
+  </div>
+} @else if (loading()) {
+  <p class="muted">Chargement du dossier…</p>
+}
+
+@if (viewer(); as v) {
+  <div class="modal-backdrop" (click)="closeDocument()">
+    <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="doc-title" (click)="$event.stopPropagation()">
+      <h2 id="doc-title" class="modal-title">{{ typeLabel(v.doc.type, v.doc.label) }}</h2>
+      <p class="modal-sub">
+        {{ docStatus(v.doc.status).label }}
+        @if (v.doc.expiresAt) { · expire le {{ v.doc.expiresAt | date: 'd MMM y' }} }
+        · consultation inscrite au journal d'audit.
+      </p>
+      <div class="doc-frame">
+        @if (v.frameUrl) {
+          <iframe [src]="v.frameUrl" [title]="typeLabel(v.doc.type, v.doc.label)"></iframe>
+        } @else if (v.url) {
+          <img [src]="v.url" [alt]="typeLabel(v.doc.type, v.doc.label)" />
+        } @else if (v.error) {
+          <span class="muted">{{ v.error }}</span>
+        } @else {
+          <span class="muted">Chargement…</span>
+        }
+      </div>
+
+      @if (rejecting()) {
+        <label class="form-label" for="doc-reason">Motif du refus <small>(transmis au chauffeur)</small></label>
+        <textarea id="doc-reason" class="form-input" rows="2" placeholder="Photo floue, coins coupés, pièce expirée…" [value]="reason()" (input)="reason.set($any($event.target).value)"></textarea>
+      }
+      @if (reviewError()) {
+        <div class="state-banner" role="alert">{{ reviewError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-action btn-secondary" type="button" [disabled]="busy()" (click)="closeDocument()">Fermer</button>
+        @if (canReview() && v.doc.status !== 'REJECTED') {
+          @if (rejecting()) {
+            <button class="btn-action btn-danger" type="button" [disabled]="busy()" (click)="rejectDocument()">{{ busy() ? 'Enregistrement…' : 'Confirmer le refus' }}</button>
+          } @else {
+            <button class="btn-action btn-danger" type="button" [disabled]="busy()" (click)="rejecting.set(true)">À reprendre</button>
+            @if (v.doc.status !== 'APPROVED') {
+              <button class="btn-action btn-primary" type="button" [disabled]="busy()" (click)="approveDocument()">{{ busy() ? 'Enregistrement…' : 'Pièce conforme' }}</button>
+            }
+          }
+        }
+      </div>
+    </div>
+  </div>
+}
+
+@if (appointmentOpen()) {
+  <div class="modal-backdrop" (click)="closeAppointment()">
+    <form class="modal" role="dialog" aria-modal="true" aria-labelledby="rdv-title" (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); submitAppointment()">
+      <h2 id="rdv-title" class="modal-title">Rendez-vous en agence</h2>
+      <p class="modal-sub">Entretien et contrôle du véhicule. Le chauffeur est prévenu par SMS ; sa demande de changement éventuelle est effacée.</p>
+      <label class="form-label" for="rdv-at">Date et heure</label>
+      <input id="rdv-at" class="form-input" type="datetime-local" [value]="fAt()" (input)="fAt.set($any($event.target).value)" />
+      <label class="form-label" for="rdv-place">Lieu <small>(vide = adresse de l'agence par défaut)</small></label>
+      <input id="rdv-place" class="form-input" type="text" placeholder="Agence Seddo, Liberté 6" [value]="fPlace()" (input)="fPlace.set($any($event.target).value)" />
+      <label class="form-label" for="rdv-note">Consigne au chauffeur</label>
+      <input id="rdv-note" class="form-input" type="text" [value]="fNote()" (input)="fNote.set($any($event.target).value)" />
+      @if (appointmentError()) {
+        <div class="state-banner" role="alert">{{ appointmentError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-action btn-secondary" type="button" [disabled]="busy()" (click)="closeAppointment()">Annuler</button>
+        <button class="btn-action btn-primary" type="submit" [disabled]="busy()">{{ busy() ? 'Enregistrement…' : 'Fixer le rendez-vous' }}</button>
+      </div>
+    </form>
+  </div>
+}

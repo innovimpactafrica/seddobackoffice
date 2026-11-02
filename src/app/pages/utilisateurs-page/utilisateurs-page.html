@@ -1,0 +1,319 @@
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Utilisateurs</h1>
+    <p class="page-sub">Double authentification obligatoire · session fermée après 30 min d'inactivité</p>
+  </div>
+  <button class="btn-primary" type="button" (click)="openInvite()">Inviter</button>
+</div>
+
+<section class="rights-card">
+  <div class="rights-head">
+    <h2 class="card-title">Droits par rôle</h2>
+    @if (accessLegend().length) {
+      <ul class="rights-legend">
+        @for (l of accessLegend(); track l.code) {
+          <li><span [class]="'pill ' + accessPill(l.code)">{{ l.label }}</span>@if (l.hint) { {{ l.hint }} }</li>
+        }
+      </ul>
+    }
+  </div>
+  @if (notice()) {
+    <div class="state-banner state-ok" role="status">{{ notice() }}</div>
+  }
+  @if (rightsError()) {
+    <div class="state-banner" role="alert">{{ rightsError() }}</div>
+  } @else {
+    <div class="rights-scroll">
+      <table class="rights-table">
+        <thead>
+          <tr>
+            <th>Action sensible</th>
+            @for (r of roleColumns(); track r.code) {
+              <th class="col-role" [attr.title]="r.description">{{ r.label }}</th>
+            }
+            <th><span class="sr-only">Modifier</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (g of droitGroups(); track g.label) {
+            <tr class="group-row">
+              <th scope="colgroup" [attr.colspan]="roleColumns().length + 2">{{ g.label }}</th>
+            </tr>
+            @for (d of g.rows; track d.key) {
+              <tr>
+                <td [attr.title]="d.routes">{{ d.label }}</td>
+                @for (c of d.cells; track $index) {
+                  <td class="col-role"><span [class]="'pill ' + accessPill(c.code)">{{ c.label }}</span></td>
+                }
+                <td class="col-edit"><button class="btn-row" type="button" (click)="openPermission(d.key)">Modifier</button></td>
+              </tr>
+            }
+          } @empty {
+            <tr><td [attr.colspan]="roleColumns().length + 2" class="empty-cell">Chargement…</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (rolesData(); as data) {
+      <p class="rights-note">Seuil de remboursement : {{ data.refundThreshold.toLocaleString('fr-FR') }} F. Survolez une action pour voir les routes de l'API concernées.</p>
+    }
+  }
+</section>
+
+<div class="toolbar">
+  <div class="search-box">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a736c" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="search" placeholder="Nom, e-mail, rôle..." class="search-input" (input)="onSearch($any($event.target).value)" />
+  </div>
+  <select class="sel" (change)="onRole($any($event.target).value)">
+    <option value="">Rôle : tous</option>
+    @for (r of roleColumns(); track r.code) {
+      <option [value]="r.code">{{ r.label }}</option>
+    }
+  </select>
+</div>
+
+@if (actionError()) {
+  <div class="state-banner" role="alert">{{ actionError() }}</div>
+}
+
+@if (error()) {
+  <div class="state-banner" role="alert">
+    {{ error() }}
+    <button type="button" class="btn-link" (click)="loadUsers()">Réessayer</button>
+  </div>
+}
+
+<div class="table-card" [class.is-loading]="loading()">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Nom</th>
+        <th>Rôle</th>
+        <th>2FA</th>
+        <th>Statut</th>
+        <th>Dernière activité</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (u of visible(); track u.id) {
+        <tr>
+          <td>
+            <div class="user-name">{{ u.name }}</div>
+            <div class="user-mail">{{ u.email }}</div>
+          </td>
+          <td>{{ u.roleLabel }}</td>
+          <td>
+            <span class="pill" [class.pill-green]="u.twoFactor === 'ACTIVE'" [class.pill-yellow]="u.twoFactor !== 'ACTIVE'">{{ u.twoFactorLabel }}</span>
+          </td>
+          <td>
+            <span class="pill" [class.pill-green]="u.status === 'ACTIVE'" [class.pill-gray]="u.status !== 'ACTIVE'">{{ u.statusLabel }}</span>
+          </td>
+          <td class="nowrap">{{ formatDate(u.lastActivityAt) }}</td>
+          <td class="col-actions">
+            <button class="btn-row" type="button" [disabled]="savingId() === u.id || (isSelf(u) && u.role === 'ADMIN')" [attr.title]="isSelf(u) && u.role === 'ADMIN' ? 'Vous ne pouvez pas retirer votre propre rôle Admin' : null" (click)="openRoleDialog(u)">Rôle</button>
+            <button class="btn-row" type="button" [disabled]="savingId() === u.id" (click)="openSecurity(u)">2FA</button>
+            @if (u.status === 'ACTIVE') {
+              <button class="btn-row btn-danger" type="button" [disabled]="savingId() === u.id || isSelf(u)" [attr.title]="isSelf(u) ? 'Vous ne pouvez pas désactiver votre propre compte' : null" (click)="toggleActive(u)">Désactiver</button>
+            } @else {
+              <button class="btn-row btn-orange" type="button" [disabled]="savingId() === u.id" (click)="toggleActive(u)">Réactiver</button>
+            }
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="6" class="empty-cell">{{ loading() ? 'Chargement…' : 'Aucun utilisateur.' }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+  <div class="pagination">
+    <div class="pag-left">
+      <span>{{ rangeLabel() }}</span>
+      <select class="pag-sel" (change)="onPageSize($any($event.target).value)">
+        @for (n of pageSizes; track n) {
+          <option [value]="n">{{ n }}</option>
+        }
+      </select>
+      <span>par page</span>
+    </div>
+    <div class="pag-right">
+      <button class="pag-btn" type="button" [disabled]="page() === 1" (click)="goTo(1)" aria-label="Première page">«</button>
+      <button class="pag-btn" type="button" [disabled]="page() === 1" (click)="goTo(page() - 1)" aria-label="Page précédente">‹</button>
+      @for (p of pages(); track p) {
+        <button class="pag-btn" type="button" [class.active]="p === page()" (click)="goTo(p)">{{ p }}</button>
+      }
+      <button class="pag-btn" type="button" [disabled]="page() === totalPages()" (click)="goTo(page() + 1)" aria-label="Page suivante">›</button>
+      <button class="pag-btn" type="button" [disabled]="page() === totalPages()" (click)="goTo(totalPages())" aria-label="Dernière page">»</button>
+    </div>
+  </div>
+</div>
+
+@if (editing(); as user) {
+  <div class="modal-backdrop" (click)="closeRoleDialog()">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="role-title" (click)="$event.stopPropagation()">
+      <h2 id="role-title" class="modal-title">Changer le rôle</h2>
+      <p class="modal-sub">{{ user.name }} · {{ user.email }}</p>
+      <div class="role-options">
+        @for (r of roleColumns(); track r.code) {
+          <label class="role-option" [class.selected]="newRole() === r.code">
+            <input type="radio" name="role" [value]="r.code" [checked]="newRole() === r.code" (change)="newRole.set(r.code)" />
+            <span>
+              <strong>{{ r.label }}</strong>
+              <small>{{ r.description }}</small>
+            </span>
+          </label>
+        }
+      </div>
+      @if (actionError()) {
+        <div class="state-banner" role="alert">{{ actionError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-row" type="button" (click)="closeRoleDialog()">Annuler</button>
+        <button class="btn-row btn-orange" type="button" [disabled]="savingId() === user.id || newRole() === user.role" (click)="saveRole()">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (confirming(); as user) {
+  @let activate = user.status !== 'ACTIVE';
+  <div class="modal-backdrop" (click)="closeConfirm()">
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" (click)="$event.stopPropagation()">
+      <h2 id="confirm-title" class="modal-title">{{ activate ? 'Réactiver ce compte ?' : 'Désactiver ce compte ?' }}</h2>
+      <p class="modal-sub">{{ user.name }} · {{ user.email }} · {{ user.roleLabel }}</p>
+      <p class="modal-sub">
+        {{ activate
+          ? 'Cette personne pourra de nouveau se connecter au backoffice avec son rôle actuel.'
+          : 'Cette personne ne pourra plus se connecter et ses sessions en cours seront fermées immédiatement. Vous pourrez réactiver le compte à tout moment.' }}
+      </p>
+      @if (actionError()) {
+        <div class="state-banner" role="alert">{{ actionError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-row" type="button" [disabled]="savingId() === user.id" (click)="closeConfirm()">Annuler</button>
+        <button class="btn-row" [class.btn-danger]="!activate" [class.btn-orange]="activate" type="button" [disabled]="savingId() === user.id" (click)="confirmToggle()">
+          {{ savingId() === user.id ? 'Veuillez patienter…' : activate ? 'Réactiver' : 'Désactiver' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (inviteOpen()) {
+  <div class="modal-backdrop" (click)="closeInvite()">
+    <form class="modal" role="dialog" aria-modal="true" aria-labelledby="invite-title" (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); submitInvite()">
+      <h2 id="invite-title" class="modal-title">Inviter un utilisateur</h2>
+      <p class="modal-sub">Un e-mail avec le lien du backoffice, l'identifiant et un mot de passe provisoire lui sera envoyé.</p>
+
+      <label class="form-label" for="invite-name">Nom complet</label>
+      <input id="invite-name" class="form-input" type="text" autocomplete="off" [value]="inviteName()" (input)="inviteName.set($any($event.target).value)" />
+
+      <label class="form-label" for="invite-email">Adresse e-mail</label>
+      <input id="invite-email" class="form-input" type="email" autocomplete="off" [value]="inviteEmail()" (input)="inviteEmail.set($any($event.target).value)" />
+
+      <span class="form-label">Rôle</span>
+      <div class="role-options">
+        @for (r of roleColumns(); track r.code) {
+          <label class="role-option" [class.selected]="inviteRole() === r.code">
+            <input type="radio" name="invite-role" [value]="r.code" [checked]="inviteRole() === r.code" (change)="inviteRole.set(r.code)" />
+            <span>
+              <strong>{{ r.label }}</strong>
+              <small>{{ r.description }}</small>
+            </span>
+          </label>
+        }
+      </div>
+
+      @if (dialogError()) {
+        <div class="state-banner" role="alert">{{ dialogError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-row" type="button" (click)="closeInvite()">Annuler</button>
+        <button class="btn-row btn-orange" type="submit" [disabled]="busy()">{{ busy() ? 'Envoi…' : "Envoyer l'invitation" }}</button>
+      </div>
+    </form>
+  </div>
+}
+
+@if (security(); as user) {
+  <div class="modal-backdrop" (click)="closeSecurity()">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sec-title" (click)="$event.stopPropagation()">
+      <h2 id="sec-title" class="modal-title">Sécurité du compte</h2>
+      <p class="modal-sub">{{ user.name }} · {{ user.email }} · 2FA : {{ user.twoFactorLabel }}</p>
+
+      <div class="security-actions">
+        <button class="security-action" type="button" [disabled]="busy()" (click)="resendInvitation(user)">
+          <strong>Renvoyer l'invitation</strong>
+          <small>Envoie à nouveau le lien du backoffice avec un nouveau mot de passe provisoire.</small>
+        </button>
+        <button class="security-action" type="button" [disabled]="busy()" (click)="resetTwoFactor(user)">
+          <strong>Réinitialiser la 2FA</strong>
+          <small>La double authentification devra être configurée à nouveau à la prochaine connexion.</small>
+        </button>
+      </div>
+
+      @if (dialogError()) {
+        <div class="state-banner" role="alert">{{ dialogError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-row" type="button" (click)="closeSecurity()">Fermer</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (credentials(); as creds) {
+  <div class="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cred-title">
+      <h2 id="cred-title" class="modal-title">Mot de passe provisoire</h2>
+      <p class="modal-sub">Aucun e-mail n'a été envoyé : transmettez ces identifiants à {{ creds.name }}. Le mot de passe ne sera plus affiché.</p>
+      <div class="cred-row"><span>Identifiant</span><strong>{{ creds.email }}</strong></div>
+      <div class="cred-row"><span>Mot de passe</span><strong class="mono">{{ creds.password }}</strong></div>
+      <div class="modal-actions">
+        <button class="btn-row" type="button" (click)="copyPassword()">{{ copied() ? 'Copié ✓' : 'Copier le mot de passe' }}</button>
+        <button class="btn-row btn-orange" type="button" (click)="closeCredentials()">Terminé</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (editingPermission(); as p) {
+  <div class="modal-backdrop" (click)="closePermission()">
+    <form class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="perm-title" (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); savePermission()">
+      <h2 id="perm-title" class="modal-title">{{ p.label }}</h2>
+      <p class="modal-sub">Routes concernées : {{ p.routes }}</p>
+      <div class="perm-grid">
+        @for (r of configurableRoles(); track r.code) {
+          <div class="perm-row">
+            <span class="perm-role" [attr.title]="r.description">{{ r.label }}</span>
+            <div class="segmented" role="radiogroup" [attr.aria-label]="'Droit du rôle ' + r.label">
+              @for (v of p.accepts; track v) {
+                <button type="button" role="radio" [attr.aria-checked]="permissionDraft()[r.code] === v" [class.active]="permissionDraft()[r.code] === v" (click)="setDraft(r.code, v)">
+                  {{ rolesData()?.accessLabels?.[v] ?? v }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+        <div class="perm-row">
+          <span class="perm-role">Admin</span>
+          <span class="perm-fixed">Tous les droits, non modifiable</span>
+        </div>
+      </div>
+      @if (p.accepts.includes('REQUEST')) {
+        <p class="rights-note">« Demande » : l'action crée une demande ; « Validation » : valide les demandes faites par une autre personne.</p>
+      }
+      <label class="form-label" for="perm-reason">Motif <small>(inscrit au journal d'audit)</small></label>
+      <input id="perm-reason" class="form-input" type="text" placeholder="Les Opérations relancent les versements le week-end" [value]="permissionReason()" (input)="permissionReason.set($any($event.target).value)" />
+      @if (permissionError()) {
+        <div class="state-banner" role="alert">{{ permissionError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-row" type="button" [disabled]="busy()" (click)="closePermission()">Annuler</button>
+        <button class="btn-row btn-orange" type="submit" [disabled]="busy()">{{ busy() ? 'Enregistrement…' : 'Enregistrer' }}</button>
+      </div>
+    </form>
+  </div>
+}

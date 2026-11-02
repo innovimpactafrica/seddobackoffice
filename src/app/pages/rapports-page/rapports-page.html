@@ -1,0 +1,125 @@
+<div class="rp-wrap">
+
+  <!-- ======= EN-TÊTE ======= -->
+  <div class="rp-head">
+    <div>
+      <h1 class="rp-title">Rapports</h1>
+      <p class="rp-sub">Courses, argent et qualité sur la période choisie</p>
+    </div>
+    <button class="btn-export" type="button" [disabled]="exporting()" (click)="exportCsv()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      {{ exporting() ? 'Export…' : 'Exporter CSV' }}
+    </button>
+  </div>
+
+  <!-- Sélecteur de période -->
+  <div class="period-bar">
+    <select class="period-select" aria-label="Période" (change)="setPeriod($any($event.target).value)">
+      @for (p of periods; track p.key) {
+        <option [value]="p.key" [selected]="p.key === periodKey()">{{ p.label }}</option>
+      }
+    </select>
+    <span class="period-range">{{ range().from | date: 'd MMM' }} – {{ range().last | date: 'd MMM y' }}</span>
+    @if (loading()) { <span class="period-range">· chargement…</span> }
+  </div>
+
+  @if (error()) {
+    <div class="state-banner" role="alert">{{ error() }} <button class="btn-link" type="button" (click)="load()">Réessayer</button></div>
+  }
+
+  <!-- ======= 5 KPIs ======= -->
+  <div class="kpi-row" [class.stale]="loading()">
+    @for (k of kpis(); track k.label) {
+      <div class="kpi-card">
+        <span class="kpi-label">{{ k.label }}</span>
+        <strong class="kpi-val">{{ k.val }}</strong>
+        <span class="kpi-sub">{{ k.sub }}</span>
+      </div>
+    } @empty {
+      @for (i of [1, 2, 3, 4, 5]; track i) {
+        <div class="kpi-card kpi-empty"><span class="kpi-label">&nbsp;</span><strong class="kpi-val">—</strong><span class="kpi-sub">&nbsp;</span></div>
+      }
+    }
+  </div>
+
+  <!-- ======= LIGNE 2 : GRAPHIQUE + INDICATEURS FIABILITÉ ======= -->
+  <div class="chart-row" [class.stale]="loading()">
+
+    <!-- Graphique bar (toujours présent : le canvas doit exister pour Chart.js) -->
+    <div class="card chart-card">
+      <h4 class="card-title">Courses terminées par jour</h4>
+      <div class="bar-box">
+        <canvas #barCanvas aria-label="Courses terminées par jour" role="img"></canvas>
+      </div>
+      @if (daysError()) {
+        <p class="muted">Le détail par jour n'a pas pu être chargé.</p>
+      }
+    </div>
+
+    <!-- Indicateurs de fiabilité -->
+    <div class="card fiab-card">
+      <h4 class="card-title">Indicateurs de fiabilité</h4>
+      <table class="fiab-table">
+        <thead>
+          <tr>
+            <th>Indicateur</th>
+            <th>Valeur</th>
+            <th>Cible</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (ind of indicators(); track ind.label) {
+            <tr>
+              <td>{{ ind.label }}</td>
+              <td><strong>{{ ind.value }}</strong></td>
+              <td>
+                <span class="cible-badge" [class.cible-vert]="ind.level === 'vert'" [class.cible-rouge]="ind.level === 'rouge'" [class.cible-orange]="ind.level === 'orange'">
+                  {{ ind.target }}
+                </span>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="3" class="muted">Chargement…</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- ======= TABLEAU DÉTAIL PAR JOUR ======= -->
+  <div class="card detail-card" [class.stale]="loading()">
+    <h4 class="card-title">Détail par jour</h4>
+    <div class="detail-scroll">
+      <table class="detail-table">
+        <thead>
+          <tr>
+            <th>Jour</th>
+            <th>Courses</th>
+            <th>Encaissé</th>
+            <th>Commission</th>
+            <th>Remboursé</th>
+            <th>Annulées</th>
+            <th>Sans chauffeur</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (j of days(); track j.date.getTime()) {
+            <tr [class.row-today]="j.isToday">
+              <td [class.today-label]="j.isToday">{{ j.date | date: 'EEE d MMM' }}</td>
+              <td>{{ j.completed }}</td>
+              <td>{{ money(j.gmv) }}</td>
+              <td>{{ money(j.commission) }}</td>
+              <td>{{ money(j.refunded) }}</td>
+              <td>{{ j.cancelled }}</td>
+              <td>{{ j.noDriver }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="muted">{{ loading() ? 'Chargement…' : 'Aucune donnée.' }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>

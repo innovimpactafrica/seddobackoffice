@@ -1,0 +1,209 @@
+<div class="clients-layout">
+  <div class="clients-main">
+    <header class="clients-head">
+      <h1 class="clients-title">Clients</h1>
+      <p class="clients-sub">
+        @if (counts(); as c) {
+          {{ c.all | number }} client{{ c.all > 1 ? 's' : '' }} au total · {{ c.blocked | number }} bloqué{{ c.blocked > 1 ? 's' : '' }} ·
+        }
+        cliquez sur une ligne pour ouvrir la fiche
+      </p>
+    </header>
+
+    <div class="toolbar">
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a736c" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="search" placeholder="Nom ou numéro…" class="search-input" aria-label="Rechercher un client" [value]="search()" (input)="onSearch($any($event.target).value)" />
+      </div>
+
+      <select class="sel" aria-label="Statut" (change)="setStatus($any($event.target).value)">
+        <option value="">Statut : tous</option>
+        <option value="ACTIVE">Actif</option>
+        <option value="BLOCKED">Bloqué</option>
+      </select>
+    </div>
+
+    @if (error()) {
+      <div class="state-banner" role="alert">{{ error() }} <button class="btn-link" type="button" (click)="load()">Réessayer</button></div>
+    }
+
+    <div class="table-card">
+      <table class="clients-table">
+        <thead>
+          <tr>
+            <th>Client</th>
+            <th>Numéro</th>
+            <th>Canal</th>
+            <th class="num">Courses</th>
+            <th class="num">Note</th>
+            <th>Client depuis</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (cl of clients(); track cl.id) {
+            <tr class="client-row" tabindex="0" [class.row-selected]="selectedId() === cl.id" (click)="selectClient(cl.id)" (keydown.enter)="selectClient(cl.id)">
+              <td>
+                <div class="client-name" [class.unnamed]="!cl.firstName && !cl.lastName">{{ name(cl) }}</div>
+                @if (!cl.omEligible) { <div class="client-id">Orange Money non disponible</div> }
+              </td>
+              <td>{{ cl.phone }}</td>
+              <td>{{ cl.maxit ? 'Max it' : 'App' }}</td>
+              <td class="num">{{ cl.rides | number }}</td>
+              <td class="num">{{ rating(cl.rating) }}</td>
+              <td>{{ cl.createdAt | date: 'd MMM y' }}</td>
+              <td><span class="pill" [class.pill-actif]="cl.status === 'ACTIVE'" [class.pill-bloque]="cl.status === 'BLOCKED'">{{ statusLabels[cl.status] }}</span></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="empty-cell">{{ loading() ? 'Chargement…' : 'Aucun client.' }}</td></tr>
+          }
+        </tbody>
+      </table>
+
+      <div class="pagination">
+        <div class="pag-left">
+          <span>{{ rangeLabel() }}</span>
+          <select class="pag-sel" aria-label="Lignes par page" (change)="setPageSize($any($event.target).value)">
+            @for (s of pageSizes; track s) {
+              <option [value]="s" [selected]="s === pageSize()">{{ s }}</option>
+            }
+          </select>
+          <span>par page</span>
+        </div>
+        <div class="pag-right">
+          <button class="pag-btn" type="button" aria-label="Première page" [disabled]="currentPage() === 1" (click)="goTo(1)">«</button>
+          <button class="pag-btn" type="button" aria-label="Page précédente" [disabled]="currentPage() === 1" (click)="goTo(currentPage() - 1)">‹</button>
+          @for (p of pages(); track p) {
+            <button class="pag-btn" type="button" [class.active]="p === currentPage()" (click)="goTo(p)">{{ p }}</button>
+          }
+          <button class="pag-btn" type="button" aria-label="Page suivante" [disabled]="currentPage() === totalPages()" (click)="goTo(currentPage() + 1)">›</button>
+          <button class="pag-btn" type="button" aria-label="Dernière page" [disabled]="currentPage() === totalPages()" (click)="goTo(totalPages())">»</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  @if (selectedId()) {
+    <aside class="client-slide" aria-label="Détails du client">
+      @if (detail(); as c) {
+        <div class="slide-header">
+          <div class="slide-title-wrap">
+            <h2 class="slide-name">{{ name(c) }}</h2>
+            <p class="slide-sub">
+              {{ selectedRow()?.maxit ? 'Max it' : 'App' }} · client depuis le {{ c.createdAt | date: 'd MMM y' }} · {{ lang(c.lang) }}
+            </p>
+          </div>
+          <button class="slide-close" type="button" (click)="closeSlide()" aria-label="Fermer le volet">×</button>
+        </div>
+
+        @if (notice()) {
+          <div class="state-banner state-ok" role="status">{{ notice() }}</div>
+        }
+
+        <div class="slide-meta-grid">
+          <div class="meta-row">
+            <span class="meta-label">Numéro</span>
+            <div class="meta-value-line">
+              <span class="phone-text">{{ revealedPhone() ?? c.phone }}</span>
+              @if (!revealedPhone()) {
+                <button class="btn-afficher" type="button" (click)="openAction('reveal')">Afficher</button>
+              }
+            </div>
+          </div>
+          @if (selectedRow(); as row) {
+            <div class="meta-row">
+              <span class="meta-label">Courses</span>
+              <span class="meta-bold">{{ row.rides | number }}</span>
+            </div>
+          }
+          <div class="meta-row">
+            <span class="meta-label">Note passager</span>
+            <span class="meta-bold">{{ rating(c.rating) }}</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Orange Money</span>
+            <span class="meta-bold">{{ c.omEligible ? 'Paiement possible' : 'Non disponible' }}</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Statut</span>
+            <span class="pill" [class.pill-actif]="c.status === 'ACTIVE'" [class.pill-bloque]="c.status === 'BLOCKED'">{{ statusLabels[c.status] }}</span>
+          </div>
+        </div>
+
+        <div class="slide-section">
+          <h3 class="section-title">Courses récentes</h3>
+          @if (c.recentRides.length) {
+            <table class="recent-courses-table">
+              <tbody>
+                @for (rc of c.recentRides; track rc.id) {
+                  <tr>
+                    <td class="rc-num">{{ rc.ref }}</td>
+                    <td class="rc-date">{{ rc.createdAt | date: 'd MMM HH:mm' }}</td>
+                    <td class="rc-montant">
+                      {{ rc.price | number }} F
+                      @if (rc.cancelFee > 0) { <div class="rc-fee">frais d'annulation <span class="nowrap">{{ rc.cancelFee | number }} F</span></div> }
+                    </td>
+                    <td class="rc-statut"><span class="rc-badge" [class]="'rc-badge ' + rideBadge(rc.status)">{{ rideLabel(rc.status) }}</span></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          } @else {
+            <p class="muted">Aucune course.</p>
+          }
+        </div>
+
+        <div class="slide-section">
+          <h3 class="section-title">Réclamations</h3>
+          @for (t of c.tickets; track t.id) {
+            <div class="reclamation-card">
+              <span class="reclamation-text">
+                @if (t.ref) { <strong>{{ t.ref }}</strong> · }{{ ticketCategory(t) }}
+                @if (t.createdAt) { <span class="rc-fee">· {{ t.createdAt | date: 'd MMM' }}</span> }
+              </span>
+              <span class="rc-badge" [class]="'rc-badge ' + ticketBadge(t)">{{ ticketLabel(t) }}</span>
+            </div>
+          } @empty {
+            <p class="muted">Aucune réclamation.</p>
+          }
+        </div>
+
+        <div class="slide-footer">
+          @if (c.status === 'ACTIVE') {
+            <button class="btn-bloquer" type="button" (click)="openAction('block')">Bloquer</button>
+          } @else {
+            <button class="btn-debloquer" type="button" (click)="openAction('unblock')">Débloquer</button>
+          }
+        </div>
+      } @else {
+        <div class="slide-header">
+          <p class="muted">{{ detailLoading() ? 'Chargement de la fiche…' : detailError() }}</p>
+          <button class="slide-close" type="button" (click)="closeSlide()" aria-label="Fermer le volet">×</button>
+        </div>
+      }
+    </aside>
+  }
+</div>
+
+@if (action(); as a) {
+  <div class="modal-backdrop" (click)="closeAction()">
+    <form class="modal" role="dialog" aria-modal="true" aria-labelledby="client-act-title" (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); submitAction()">
+      <h2 id="client-act-title" class="modal-title">{{ actions[a].title }} · {{ detail() ? name(detail()!) : '' }}</h2>
+      <p class="modal-sub">{{ actions[a].hint }}</p>
+      <label class="form-label" for="client-reason">Motif <small>(inscrit au journal d'audit)</small></label>
+      <input id="client-reason" class="form-input" type="text" [value]="reason()" (input)="reason.set($any($event.target).value)" />
+      @if (actionError()) {
+        <div class="state-banner" role="alert">{{ actionError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-modal btn-cancel" type="button" [disabled]="busy()" (click)="closeAction()">Annuler</button>
+        <button class="btn-modal" type="submit" [class.btn-danger]="a === 'block'" [class.btn-primary]="a !== 'block'" [disabled]="busy()">
+          {{ busy() ? 'Envoi…' : actions[a].confirm }}
+        </button>
+      </div>
+    </form>
+  </div>
+}

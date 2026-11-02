@@ -1,0 +1,313 @@
+<div class="ch-wrap">
+  <div class="ch-head">
+    <h1 class="ch-title">Chauffeurs</h1>
+    <p class="ch-sub">Dossiers d'inscription, fiches, selfies de contrôle et pièces demandées aux chauffeurs.</p>
+  </div>
+
+  <nav class="page-tabs" aria-label="Sections chauffeurs">
+    <button type="button" [class.active]="tab() === 'drivers'" (click)="setTab('drivers')">Chauffeurs</button>
+    <button type="button" [class.active]="tab() === 'selfies'" (click)="setTab('selfies')">Selfies à vérifier</button>
+    <button type="button" [class.active]="tab() === 'types'" (click)="setTab('types')">Types de pièces</button>
+  </nav>
+
+  @switch (tab()) {
+    @case ('selfies') {
+      <app-selfies-panel [canReview]="canAct()" (openDriver)="openDriver($event)" />
+    }
+    @case ('types') {
+      <app-document-types-panel [canEdit]="isAdmin()" />
+    }
+    @default {
+      @if (selectedId()) {
+        <!-- ─── Fiche chauffeur ─── -->
+        <div class="ch-detail-wrap">
+          <button class="back-link" type="button" (click)="backToList()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Retour à la liste
+          </button>
+
+          @if (notice()) {
+            <div class="state-banner state-ok" role="status">{{ notice() }}</div>
+          }
+
+          @if (detailLoading()) {
+            <p class="muted">Chargement de la fiche…</p>
+          } @else if (detailError()) {
+            <div class="state-banner" role="alert">{{ detailError() }}</div>
+          } @else if (detail(); as d) {
+            <div class="ch-detail-header">
+              <div class="ch-avatar">{{ initials(d) }}</div>
+              <div class="ch-identity">
+                <div class="ch-name-line">
+                  <h2 class="ch-detail-name">{{ name(d) }}</h2>
+                  <span class="statut-badge" [class]="'statut-badge ' + statusInfo(d.status).css">{{ statusInfo(d.status).label }}</span>
+                  @if (d.status === 'VALIDATED') {
+                    <span class="enligne-dot" [class.dot-on]="d.presence === 'ONLINE'" [class.dot-busy]="d.presence === 'BUSY'" [class.dot-off]="d.presence === 'OFFLINE'">● {{ presenceLabel(d.presence) }}</span>
+                  }
+                  @if (d.accountStatus !== 'ACTIVE') {
+                    <span class="statut-badge st-banni">Compte {{ d.accountStatus.toLowerCase() }}</span>
+                  }
+                </div>
+                <p class="ch-detail-sub">
+                  {{ revealedPhone() ?? d.phone }} · inscrit le {{ d.createdAt | date: 'd MMM y' }}
+                  @if (d.vehicle; as v) {
+                    · {{ v.category ?? '' }} · {{ vehicleLine(v) }} {{ v.plate ?? '' }}
+                  }
+                </p>
+              </div>
+            </div>
+
+            <div class="ch-actions-row">
+              @for (a of availableActions(); track a) {
+                <button type="button" class="btn-action" [class.btn-danger]="actions[a].danger" [class.btn-primary]="!actions[a].danger" (click)="openAction(a)">{{ actions[a].label }}</button>
+              }
+              @if (!revealedPhone()) {
+                <button type="button" class="btn-action btn-secondary" (click)="openFicheDialog('reveal')">Afficher le numéro</button>
+              }
+              @if (canRequestPayout()) {
+                <button type="button" class="btn-action btn-secondary" (click)="openFicheDialog('payout')">Changer le numéro de versement</button>
+              }
+            </div>
+
+            <div class="ch-kpi-grid">
+              <div class="ch-kpi-card">
+                <span class="kpi-label">Note</span>
+                <strong class="kpi-value">{{ rating(d.rating) }}</strong>
+                <span class="kpi-subtext">moyenne des clients</span>
+              </div>
+              <div class="ch-kpi-card">
+                <span class="kpi-label">Courses</span>
+                <strong class="kpi-value">{{ d.stats.completed }}</strong>
+                <span class="kpi-subtext">{{ d.stats.cancelledByDriver }} annulée{{ d.stats.cancelledByDriver > 1 ? 's' : '' }} par le chauffeur</span>
+              </div>
+              <div class="ch-kpi-card">
+                <span class="kpi-label">Acceptation</span>
+                <strong class="kpi-value">{{ percent(d.acceptanceRate) }}</strong>
+                <span class="kpi-subtext">annulation : {{ percent(d.cancelRate) }}</span>
+              </div>
+              <div class="ch-kpi-card">
+                <span class="kpi-label">Gains nets</span>
+                <strong class="kpi-value">{{ money(d.stats.netEarnings) }}</strong>
+                <span class="kpi-subtext">depuis l'inscription</span>
+              </div>
+              <div class="ch-kpi-card">
+                <span class="kpi-label">Versement</span>
+                <strong class="kpi-value">{{ d.payoutMsisdn ?? '—' }}</strong>
+                <span class="kpi-subtext">Orange Money · {{ d.payoutMsisdnVerified ? 'vérifié' : 'non vérifié' }}</span>
+              </div>
+            </div>
+
+            <app-driver-dossier [driverId]="d.id" [canReview]="canAct()" (changed)="onDossierChanged()" />
+
+            <div class="ch-columns-grid">
+              <div class="ch-left-col">
+                <div class="ch-section-card">
+                  <h3 class="ch-section-title">Dernières courses</h3>
+                  @if (d.recentRides.length) {
+                    <table class="ch-sub-table">
+                      <thead>
+                        <tr><th>Course</th><th>Date</th><th class="num">Prix client</th><th class="num">Part chauffeur</th><th class="num">Statut</th></tr>
+                      </thead>
+                      <tbody>
+                        @for (r of d.recentRides; track r.id) {
+                          <tr>
+                            <td class="code-col">{{ r.ref }}</td>
+                            <td class="date-col">{{ r.createdAt | date: 'd MMM HH:mm' }}</td>
+                            <td class="num">{{ money(r.price) }}</td>
+                            <td class="num" [attr.title]="r.status === 'COMPLETED' ? null : 'Course non terminée : le chauffeur ne touche que d’éventuels frais (voir les versements)'">{{ r.status === 'COMPLETED' ? money(r.driverNet) : '—' }}</td>
+                            <td class="num"><span [class]="'ride-pill ' + rideStatus(r.status).css">{{ rideStatus(r.status).label }}</span></td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  } @else {
+                    <p class="muted">Aucune course.</p>
+                  }
+                </div>
+
+                <div class="ch-section-card">
+                  <h3 class="ch-section-title">Versements récents</h3>
+                  @if (d.recentPayouts.length) {
+                    <table class="ch-sub-table">
+                      <thead>
+                        <tr><th>Référence</th><th>Date</th><th class="num">Montant</th><th class="num">Statut</th></tr>
+                      </thead>
+                      <tbody>
+                        @for (p of d.recentPayouts; track p.orderId) {
+                          <tr>
+                            <td class="code-col">{{ p.orderId }}</td>
+                            <td class="date-col">{{ p.createdAt | date: 'd MMM HH:mm' }}</td>
+                            <td class="num">{{ money(p.amount) }}</td>
+                            <td class="num">
+                              <span [class]="'ride-pill ' + payoutStatus(p).css">{{ payoutStatus(p).label }}</span>
+                              @if (p.attempts > 1) { <div class="sub-line">{{ p.attempts }} tentatives</div> }
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  } @else {
+                    <p class="muted">Aucun versement.</p>
+                  }
+                </div>
+              </div>
+
+              <div class="ch-right-col">
+                <div class="ch-section-card">
+                  <h3 class="ch-section-title">Compte</h3>
+                  <dl class="facts">
+                    <div><dt>Téléphone</dt><dd>{{ revealedPhone() ?? d.phone }}</dd></div>
+                    <div><dt>Langue</dt><dd>{{ d.lang === 'fr' ? 'Français' : d.lang === 'wo' ? 'Wolof' : d.lang }}</dd></div>
+                    <div><dt>Compte</dt><dd>{{ d.accountStatus === 'ACTIVE' ? 'Actif' : d.accountStatus }}</dd></div>
+                    <div><dt>Présence</dt><dd>{{ presenceLabel(d.presence) }}</dd></div>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <!-- ─── Liste ─── -->
+        <div class="filter-tabs">
+          <button class="filter-tab" type="button" [class.tab-active]="status() === ''" (click)="setStatus('')">
+            Tous @if (counts().ALL !== undefined) { <span class="count">{{ counts().ALL }}</span> }
+          </button>
+          @for (s of statusOrder; track s) {
+            <button class="filter-tab" type="button" [class.tab-active]="status() === s" (click)="setStatus(s)">
+              {{ statuses[s].label }} @if (counts()[s] !== undefined) { <span class="count">{{ counts()[s] }}</span> }
+            </button>
+          }
+        </div>
+
+        <div class="table-card">
+          <div class="toolbar">
+            <div class="search-wrap">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="search" class="search-input" placeholder="Nom, téléphone ou plaque…" aria-label="Rechercher un chauffeur" [value]="search()" (input)="onSearch($any($event.target).value)" />
+            </div>
+          </div>
+
+          @if (error()) {
+            <div class="state-banner" role="alert">{{ error() }} <button class="btn-link" type="button" (click)="load()">Réessayer</button></div>
+          }
+
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Chauffeur</th>
+                <th>Véhicule</th>
+                <th>Statut</th>
+                <th>Note</th>
+                <th>Courses</th>
+                <th>Rendez-vous</th>
+                <th>Inscrit le</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (ch of drivers(); track ch.id) {
+                <tr class="ch-row" tabindex="0" (click)="openDriver(ch.id)" (keydown.enter)="openDriver(ch.id)">
+                  <td>
+                    <div class="nom-line"><strong [class.unnamed]="!ch.firstName && !ch.lastName">{{ name(ch) }}</strong></div>
+                    <div class="sub-line">{{ ch.phone }}</div>
+                  </td>
+                  <td>
+                    @if (ch.plate) {
+                      <div>{{ vehicleLine(ch) }}</div>
+                      <div class="sub-line">{{ ch.plate }} · {{ ch.category }}@if (ch.vehicleStatus === 'PENDING') { · à contrôler }</div>
+                    } @else {
+                      <span class="sub-line">—</span>
+                    }
+                  </td>
+                  <td><span [class]="'statut-badge ' + statusInfo(ch.status).css">{{ statusInfo(ch.status).label }}</span></td>
+                  <td><span class="note-val">{{ ch.rating === null ? '—' : '★ ' + rating(ch.rating) }}</span></td>
+                  <td>{{ ch.completedRides | number }}</td>
+                  <td class="td-date">
+                    @if (ch.appointmentAt) {
+                      {{ ch.appointmentAt | date: 'd MMM HH:mm' }}
+                      @if (ch.appointmentChangeRequested) { <div class="warn-line">changement demandé</div> }
+                    } @else { — }
+                  </td>
+                  <td class="td-date">{{ ch.createdAt | date: 'd MMM y' }}</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="7" class="empty-cell">{{ loading() ? 'Chargement…' : 'Aucun chauffeur.' }}</td></tr>
+              }
+            </tbody>
+          </table>
+
+          <div class="pagination">
+            <span class="pag-label">{{ rangeLabel() }}</span>
+            <select class="pag-sel" aria-label="Lignes par page" (change)="setPageSize($any($event.target).value)">
+              @for (s of pageSizes; track s) {
+                <option [value]="s" [selected]="s === pageSize()">{{ s }}</option>
+              }
+            </select>
+            <span class="pag-unit">par page</span>
+            <div class="pag-pages">
+              <button class="pag-btn" type="button" aria-label="Page précédente" [disabled]="currentPage() === 1" (click)="goTo(currentPage() - 1)">‹</button>
+              @for (p of pages(); track p) {
+                <button class="pag-btn" type="button" [class.pag-active]="p === currentPage()" (click)="goTo(p)">{{ p }}</button>
+              }
+              <button class="pag-btn" type="button" aria-label="Page suivante" [disabled]="currentPage() === totalPages()" (click)="goTo(currentPage() + 1)">›</button>
+            </div>
+          </div>
+        </div>
+      }
+    }
+  }
+</div>
+
+@if (action(); as a) {
+  <div class="modal-backdrop" (click)="closeAction()">
+    <form class="modal" role="dialog" aria-modal="true" aria-labelledby="act-title" (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); submitAction()">
+      <h2 id="act-title" class="modal-title">{{ actions[a].label }} · {{ detail() ? name(detail()!) : '' }}</h2>
+      <p class="modal-sub">{{ actions[a].hint }}</p>
+      <label class="form-label" for="act-reason">Motif <small>(inscrit au journal d'audit)</small></label>
+      <textarea id="act-reason" class="form-input" rows="3" [value]="reason()" (input)="reason.set($any($event.target).value)"></textarea>
+      @if (actionError()) {
+        <div class="state-banner" role="alert">{{ actionError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-action btn-secondary" type="button" [disabled]="busy()" (click)="closeAction()">Annuler</button>
+        <button class="btn-action" type="submit" [class.btn-danger]="actions[a].danger" [class.btn-primary]="!actions[a].danger" [disabled]="busy()">
+          {{ busy() ? 'Enregistrement…' : 'Confirmer' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
+@if (ficheDialog(); as kind) {
+  <div class="modal-backdrop" (click)="closeFicheDialog()">
+    <form class="modal" role="dialog" aria-modal="true" aria-labelledby="fiche-title" (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); submitFicheDialog()">
+      @if (kind === 'reveal') {
+        <h2 id="fiche-title" class="modal-title">Afficher le numéro en clair</h2>
+        <p class="modal-sub">La consultation est inscrite au journal d'audit avec votre motif.</p>
+      } @else {
+        <h2 id="fiche-title" class="modal-title">Changer le numéro de versement</h2>
+        <p class="modal-sub">
+          Actuel : {{ detail()?.payoutMsisdn ?? '—' }}. La demande est validée ensuite par une autre personne, côté Finance ;
+          les versements continuent sur l'ancien numéro d'ici là.
+        </p>
+        <label class="form-label" for="payout-msisdn">Nouveau numéro Orange Money</label>
+        <input id="payout-msisdn" class="form-input" type="tel" inputmode="tel" placeholder="78 640 02 61" [value]="fMsisdn()" (input)="fMsisdn.set($any($event.target).value)" />
+        <label class="form-label" for="payout-holder">Titulaire du compte <small>(vérifié auprès d'Orange Money)</small></label>
+        <input id="payout-holder" class="form-input" type="text" [value]="fHolder()" (input)="fHolder.set($any($event.target).value)" />
+      }
+      <label class="form-label" for="fiche-reason">Motif <small>(inscrit au journal d'audit)</small></label>
+      <input id="fiche-reason" class="form-input" type="text" [value]="reason()" (input)="reason.set($any($event.target).value)" />
+      @if (actionError()) {
+        <div class="state-banner" role="alert">{{ actionError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-action btn-secondary" type="button" [disabled]="busy()" (click)="closeFicheDialog()">Annuler</button>
+        <button class="btn-action btn-primary" type="submit" [disabled]="busy()">
+          {{ busy() ? 'Envoi…' : kind === 'reveal' ? 'Afficher' : 'Envoyer la demande' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}

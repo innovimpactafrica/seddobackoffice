@@ -1,0 +1,189 @@
+<div class="page">
+  <header class="page-header">
+    <h1 class="page-title">Communication</h1>
+    <p class="page-subtitle">Notifications push et SMS ciblées</p>
+  </header>
+
+  @if (notice()) {
+    <div class="banner banner-ok" role="status">{{ notice() }} <button class="btn-link" type="button" (click)="notice.set('')">Fermer</button></div>
+  }
+  @if (actionError()) {
+    <div class="banner" role="alert">{{ actionError() }}</div>
+  }
+
+  <div class="top-grid">
+    <section class="card">
+      <h2 class="card-title">Nouvelle campagne</h2>
+
+      @if (optionsError()) {
+        <div class="banner" role="alert">{{ optionsError() }}</div>
+      }
+
+      @if (options(); as opts) {
+        <label class="field-label" for="audience">Destinataires</label>
+        <select id="audience" class="field-select" (change)="audienceType.set($any($event.target).value)">
+          @for (a of opts.audiences; track a.type) {
+            <option [value]="a.type" [selected]="a.type === audienceType()">{{ a.label }}</option>
+          }
+        </select>
+
+        <label class="field-label" for="zone">Zone</label>
+        <select id="zone" class="field-select" (change)="zoneId.set($any($event.target).value)">
+          @for (z of opts.zones; track z.id) {
+            <option [value]="z.id ?? ''" [selected]="(z.id ?? '') === zoneId()">{{ z.name }}</option>
+          }
+        </select>
+
+        <span class="field-label">Canaux</span>
+        <div class="channels">
+          @for (c of opts.channels; track c.code) {
+            <label class="check">
+              <input type="checkbox" [checked]="channels().includes(c.code)" (change)="toggleChannel(c.code, $any($event.target).checked)" />
+              {{ c.label }}
+            </label>
+          }
+        </div>
+
+        <label class="field-label" for="message">Message</label>
+        <textarea
+          id="message"
+          class="field-textarea"
+          rows="3"
+          [attr.maxlength]="maxLength()"
+          placeholder="Rédigez votre message…"
+          [value]="body()"
+          (input)="onBody($any($event.target).value)"
+        ></textarea>
+        <span class="char-count">{{ charactersLabel() }} <span class="muted">(max {{ maxLength() }})</span></span>
+
+        @if (scheduling()) {
+          <label class="field-label" for="scheduled-at">Envoi programmé (heure de Dakar)</label>
+          <div class="schedule-row">
+            <input id="scheduled-at" class="field-select" type="datetime-local" [value]="scheduledAt()" (input)="scheduledAt.set($any($event.target).value)" />
+            <button class="btn-link" type="button" (click)="cancelScheduling()">Annuler</button>
+          </div>
+        }
+        @if (previewError()) {
+          <div class="banner banner-inline" role="alert">{{ previewError() }}</div>
+        }
+
+        <div class="send-row">
+          <strong class="recipients">{{ recipientsLabel() }}</strong>
+          <div class="send-actions">
+            <button class="btn btn-light" type="button" [disabled]="!canSend()" (click)="onSchedule()">Programmer</button>
+            <button class="btn btn-primary" type="button" [disabled]="!canSend()" (click)="openConfirm('now')">Envoyer maintenant</button>
+          </div>
+        </div>
+      } @else if (!optionsError()) {
+        <p class="muted">Chargement…</p>
+      }
+    </section>
+
+    <section class="card">
+      <h2 class="card-title">Aperçu</h2>
+      <div class="preview">
+        <span class="preview-logo" aria-hidden="true">SEDDO</span>
+        <div class="preview-body">
+          <strong>{{ appName() }}</strong>
+          <p>{{ body() || 'Votre message apparaîtra ici.' }}</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <h2 class="section-title">Historique</h2>
+  <div class="search-box">
+    <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a736c" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+    <input type="search" class="search-input" placeholder="Cible, message..." (input)="onSearch($any($event.target).value)" />
+  </div>
+
+  @if (error()) {
+    <div class="banner" role="alert">{{ error() }} <button class="btn-link" type="button" (click)="load()">Réessayer</button></div>
+  }
+
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Cible</th>
+          <th>Canal</th>
+          <th class="num">Envoyés</th>
+          <th>Ouverture</th>
+          <th>Message</th>
+          <th>Statut</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (c of campaigns(); track c.id) {
+          <tr>
+            <td class="nowrap">{{ formatDate(c.date) }}</td>
+            <td>{{ c.audienceLabel }}</td>
+            <td class="nowrap">{{ c.channelLabel }}</td>
+            <td class="num">{{ num(c.recipients) }}</td>
+            <td>{{ openRate(c) }}</td>
+            <td class="muted msg">{{ c.body }}</td>
+            <td><span class="pill" [class]="'pill ' + statusInfo(c.status).css">{{ statusInfo(c.status).label }}</span></td>
+            <td class="num">
+              @if (c.status === 'SCHEDULED') {
+                <button class="btn-row" type="button" [disabled]="cancellingId() === c.id" (click)="cancelCampaign(c)">Annuler</button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="8" class="empty-cell">{{ loading() ? 'Chargement…' : 'Aucune campagne.' }}</td></tr>
+        }
+      </tbody>
+    </table>
+
+    <div class="pagination">
+      <div class="pag-left">
+        <span>{{ rangeLabel() }}</span>
+        <select class="pag-select" (change)="onPageSize($any($event.target).value)">
+          @for (n of pageSizes; track n) {
+            <option [value]="n" [selected]="n === pageSize()">{{ n }}</option>
+          }
+        </select>
+        <span>par page</span>
+      </div>
+      <div class="pag-right">
+        <button class="pag-btn" type="button" [disabled]="page() === 1" (click)="goTo(1)" aria-label="Première page">«</button>
+        <button class="pag-btn" type="button" [disabled]="page() === 1" (click)="goTo(page() - 1)" aria-label="Page précédente">‹</button>
+        @for (p of pages(); track p) {
+          <button class="pag-btn" type="button" [class.active]="p === page()" (click)="goTo(p)">{{ p }}</button>
+        }
+        <button class="pag-btn" type="button" [disabled]="page() === totalPages()" (click)="goTo(page() + 1)" aria-label="Page suivante">›</button>
+        <button class="pag-btn" type="button" [disabled]="page() === totalPages()" (click)="goTo(totalPages())" aria-label="Dernière page">»</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+@if (confirm(); as mode) {
+  <div class="modal-backdrop" (click)="closeConfirm()">
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="send-title" (click)="$event.stopPropagation()">
+      <h2 id="send-title" class="modal-title">{{ mode === 'now' ? 'Envoyer cette campagne ?' : 'Programmer cette campagne ?' }}</h2>
+      <p class="modal-sub">
+        {{ audienceOption()?.label }} · {{ recipientsLabel() }} · {{ channels().join(' + ') }}
+        @if (mode === 'schedule') { · le {{ scheduledAt().replace('T', ' à ') }} }
+      </p>
+      <p class="modal-quote">{{ body() }}</p>
+      <p class="modal-sub">
+        {{ mode === 'now' ? "L'envoi est immédiat et ne peut pas être annulé." : 'Vous pourrez annuler la campagne tant qu\'elle n\'est pas partie.' }}
+      </p>
+      @if (dialogError()) {
+        <div class="banner banner-inline" role="alert">{{ dialogError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn btn-light" type="button" [disabled]="busy()" (click)="closeConfirm()">Retour</button>
+        <button class="btn btn-primary" type="button" [disabled]="busy()" (click)="submit()">
+          {{ busy() ? 'Veuillez patienter…' : mode === 'now' ? 'Envoyer' : 'Programmer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

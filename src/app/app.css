@@ -1,0 +1,292 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: #f7f5f2;
+  color: #171717;
+}
+
+:host:has(app-login-page) {
+  background: #ffffff;
+}
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  background: #f7f5f2;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  flex: 0 0 220px;
+  width: 220px;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 18px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  background: #17130f;
+  color: #f3efe9;
+  scrollbar-color: #51473f #17130f;
+  scrollbar-width: thin;
+}
+
+.brand-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 18px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.brand-logo-sq {
+  background: #ff5a00;
+  color: #fff;
+  font-weight: 900;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  padding: 6px 9px;
+  border-radius: 6px;
+  display: inline-block;
+  line-height: 1;
+}
+
+.brand-logo-text {
+  color: #ffffff;
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.nav-group {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.nav-group-title {
+  padding: 5px 8px 2px;
+  color: #8c8379;
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.nav-group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 11px;
+  border-radius: 6px;
+  background: transparent;
+  color: #dcd7d0;
+  text-decoration: none;
+  font-size: 0.84rem;
+  font-weight: 500;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.nav-item.active {
+  background: #2b2520;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.nav-label {
+  flex: 1;
+}
+
+.nav-badge {
+  background: #ff5a00;
+  color: #ffffff;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 0.67rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 16px 8px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.user-status-text {
+  font-size: 0.74rem;
+  color: #8c8379;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.logout-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.75rem;
+  color: #c4bebb;
+  text-align: left;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.logout-link:hover {
+  color: #ff5a00;
+}
+
+.content-panel {
+  flex: 1;
+  min-width: 0;
+  padding: 22px 28px 28px;
+  background: #f7f6f4;
+}
+
+.page-header {
+  margin-bottom: 18px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: #817a74;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.page-header h1 {
+  margin: 0;
+  color: #171717;
+  font-size: clamp(1.9rem, 3vw, 2.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.06em;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    position: static;
+    width: 100%;
+    height: auto;
+    max-height: 55vh;
+    flex-basis: auto;
+    padding-bottom: 12px;
+  }
+
+  .user-card {
+    margin-top: 18px;
+  }
+
+  .content-panel {
+    padding: 22px 20px 28px;
+  }
+}
+
+@media (max-width: 600px) {
+  .content-panel {
+    padding: 18px 14px 24px;
+  }
+
+  .nav-group ul {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 380px) {
+  .nav-group ul {
+    grid-template-columns: 1fr;
+  }
+}
+
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(23, 19, 15, 0.45);
+}
+
+.confirm-dialog {
+  width: 100%;
+  max-width: 380px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+.confirm-dialog h2 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #171717;
+}
+
+.confirm-dialog p {
+  margin: 0 0 16px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #7a736c;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirm-cancel,
+.confirm-ok {
+  height: 34px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirm-cancel {
+  background: #efebe6;
+  color: #191613;
+}
+
+.confirm-cancel:hover {
+  background: #e6e1db;
+}
+
+.confirm-ok {
+  background: #ff5a00;
+  color: #fff;
+}
+
+.confirm-ok:hover {
+  background: #e65100;
+}

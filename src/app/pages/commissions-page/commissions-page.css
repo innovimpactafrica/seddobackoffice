@@ -1,0 +1,168 @@
+.module-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.module-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  background: #ffffff;
+  padding: 22px 24px;
+  border-radius: 16px;
+  border: 1px solid #ede8e3;
+}
+
+.module-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #ff5a00;
+  background: #fff4ed;
+  padding: 3px 9px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.module-header h1 {
+  margin: 0 0 6px;
+  font-size: 1.35rem;
+  color: #171717;
+}
+
+.module-header p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #737373;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-primary {
+  background: #ff5a00;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.kpi-card {
+  background: #fff;
+  border: 1px solid #ede8e3;
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpi-label {
+  font-size: 0.78rem;
+  color: #888;
+  font-weight: 500;
+}
+
+.kpi-val {
+  font-size: 1.55rem;
+  color: #171717;
+  font-weight: 800;
+}
+
+.kpi-val.highlight {
+  color: #ff5a00;
+}
+
+.kpi-val.success {
+  color: #059669;
+}
+
+.kpi-sub {
+  font-size: 0.72rem;
+  color: #999;
+}
+
+.table-card {
+  background: #fff;
+  border: 1px solid #ede8e3;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.table-toolbar {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0eae3;
+}
+
+.table-toolbar h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: #171717;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.82rem;
+}
+
+.data-table th {
+  background: #faf8f5;
+  padding: 12px 18px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #777;
+  text-transform: uppercase;
+  border-bottom: 1px solid #ede8e3;
+}
+
+.data-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid #f2ede8;
+}
+
+.badge-rate-seddo {
+  color: #ff5a00;
+  font-size: 1.05rem;
+}
+
+.badge-rate-driver {
+  color: #059669;
+  font-size: 1.05rem;
+}
+
+.btn-edit {
+  background: #f5f3f0;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 5px 11px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+}
+
+.btn-edit:hover {
+  background: #ede8e3;
+}
+
+@media (max-width: 900px) {
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

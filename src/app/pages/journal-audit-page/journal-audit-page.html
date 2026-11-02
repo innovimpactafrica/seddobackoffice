@@ -1,0 +1,91 @@
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Journal d'audit</h1>
+    <p class="page-sub">Toutes les actions sensibles, non modifiable. Les actions faites dans ce prototype apparaissent ici.</p>
+  </div>
+</div>
+
+<div class="toolbar">
+  <div class="search-box">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a736c" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="search" placeholder="Action, motif, n° de course..." class="search-input" (input)="onSearch($any($event.target).value)" />
+  </div>
+  <select class="sel" (change)="onActorType($any($event.target).value)">
+    <option value="">Qui : tous</option>
+    @for (t of actorTypes; track t.value) {
+      <option [value]="t.value">{{ t.label }}</option>
+    }
+  </select>
+  <select class="sel" (change)="onAction($any($event.target).value)">
+    <option value="">Action : toutes</option>
+    @for (a of actions(); track a.action) {
+      <option [value]="a.action">{{ actionOptionLabel(a.action) }}</option>
+    }
+  </select>
+  <select class="sel" (change)="onPeriod($any($event.target).value)">
+    <option value="all">Depuis le lancement</option>
+    <option value="7">7 derniers jours</option>
+    <option value="30">30 derniers jours</option>
+  </select>
+  @if (periodLabel()) {
+    <span class="period-label">{{ periodLabel() }}</span>
+  }
+  <button class="btn-soft push-right" type="button" [disabled]="exporting()" (click)="exportCsv()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    <span>Exporter</span>
+  </button>
+</div>
+
+@if (error()) {
+  <div class="state-banner" role="alert">
+    {{ error() }}
+    <button type="button" class="btn-link" (click)="load()">Réessayer</button>
+  </div>
+}
+
+<div class="table-card" [class.is-loading]="loading()">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Qui</th>
+        <th>Action</th>
+        <th>Motif</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (l of rows(); track l.key) {
+        <tr>
+          <td class="nowrap col-date">{{ l.date }}</td>
+          <td class="col-qui">{{ l.qui }}</td>
+          <td>{{ l.action }}</td>
+          <td class="col-motif">{{ l.motif }}</td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="4" class="empty-cell">{{ loading() ? 'Chargement…' : 'Aucun événement pour ces filtres.' }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+  <div class="pagination">
+    <div class="pag-left">
+      <span>{{ rangeLabel() }}</span>
+      <select class="pag-sel" (change)="onPageSize($any($event.target).value)">
+        @for (n of pageSizes; track n) {
+          <option [value]="n">{{ n }}</option>
+        }
+      </select>
+      <span>par page</span>
+    </div>
+    <div class="pag-right">
+      <button class="pag-btn" type="button" [disabled]="page() === 1" (click)="goTo(1)" aria-label="Première page">«</button>
+      <button class="pag-btn" type="button" [disabled]="page() === 1" (click)="goTo(page() - 1)" aria-label="Page précédente">‹</button>
+      @for (p of pages(); track p) {
+        <button class="pag-btn" type="button" [class.active]="p === page()" (click)="goTo(p)">{{ p }}</button>
+      }
+      <button class="pag-btn" type="button" [disabled]="page() === totalPages()" (click)="goTo(page() + 1)" aria-label="Page suivante">›</button>
+      <button class="pag-btn" type="button" [disabled]="page() === totalPages()" (click)="goTo(totalPages())" aria-label="Dernière page">»</button>
+    </div>
+  </div>
+</div>

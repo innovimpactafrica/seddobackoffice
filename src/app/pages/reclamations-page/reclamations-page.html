@@ -1,0 +1,203 @@
+<div class="page">
+  <header class="page-header">
+    <h1 class="page-title">Réclamations</h1>
+    <p class="page-subtitle">{{ total() }} réclamation(s) · les plus anciennes ouvertes d'abord</p>
+  </header>
+
+  @if (notice()) {
+    <div class="banner banner-ok" role="status">{{ notice() }} <button class="btn-link" type="button" (click)="notice.set('')">Fermer</button></div>
+  }
+  @if (error()) {
+    <div class="banner" role="alert">{{ error() }} <button class="btn-link" type="button" (click)="load()">Réessayer</button></div>
+  }
+
+  <div class="filters-row">
+    <div class="search-box">
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a736c" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+      <input type="search" class="search-input" placeholder="N° ticket, client, course..." (input)="onSearch($any($event.target).value)" />
+    </div>
+
+    <select class="filter-select" (change)="onStatus($any($event.target).value)" aria-label="Filtrer par statut">
+      <option value="">Statut : tous</option>
+      @for (s of statusOptions; track s.code) {
+        <option [value]="s.code">{{ s.label }}</option>
+      }
+    </select>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Ticket</th>
+          <th>Catégorie</th>
+          <th>Client</th>
+          <th>Assigné</th>
+          <th>Statut</th>
+          <th>Ouvert</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (t of tickets(); track t.id) {
+          <tr class="row-click" tabindex="0" (click)="open(t)" (keydown.enter)="open(t)">
+            <td><strong>{{ t.ref }}</strong></td>
+            <td>{{ categoryLabel(t.category) }}</td>
+            <td>
+              <span class="client">{{ clientOf(t) }}</span>
+              @if (t.rideRef) {
+                <span class="course-ref">{{ t.rideRef }}</span>
+              }
+            </td>
+            <td>{{ t.assignee ?? 'Non assigné' }}</td>
+            <td><span [class]="'pill ' + statusInfo(t.status).css">{{ statusInfo(t.status).label }}</span></td>
+            <td class="nowrap">{{ formatDate(t.createdAt) }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="6" class="empty-cell">{{ loading() ? 'Chargement…' : 'Aucune réclamation.' }}</td></tr>
+        }
+      </tbody>
+    </table>
+
+    <div class="pagination">
+      <div class="pag-left">
+        <span>{{ rangeLabel() }}</span>
+        <select class="pag-select" (change)="onPageSize($any($event.target).value)">
+          @for (n of pageSizes; track n) {
+            <option [value]="n" [selected]="n === pageSize()">{{ n }}</option>
+          }
+        </select>
+        <span>par page</span>
+      </div>
+      <div class="pag-right">
+        <button class="pag-btn" type="button" [disabled]="page() === 1" (click)="goTo(1)" aria-label="Première page">«</button>
+        <button class="pag-btn" type="button" [disabled]="page() === 1" (click)="goTo(page() - 1)" aria-label="Page précédente">‹</button>
+        @for (p of pages(); track p) {
+          <button class="pag-btn" type="button" [class.active]="p === page()" (click)="goTo(p)">{{ p }}</button>
+        }
+        <button class="pag-btn" type="button" [disabled]="page() === totalPages()" (click)="goTo(page() + 1)" aria-label="Page suivante">›</button>
+        <button class="pag-btn" type="button" [disabled]="page() === totalPages()" (click)="goTo(totalPages())" aria-label="Dernière page">»</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+@if (openId()) {
+  <div class="modal-backdrop" (click)="close()">
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="ticket-title" (click)="$event.stopPropagation()">
+      @if (detail(); as d) {
+        <div class="modal-head">
+          <div>
+            <h2 id="ticket-title" class="modal-title">{{ d.ref }} · {{ categoryLabel(d.category) }}</h2>
+            <p class="modal-sub">
+              Ouvert le {{ formatDate(d.created_at) }}
+              @if (d.resolved_at) { · résolu le {{ formatDate(d.resolved_at) }} }
+            </p>
+          </div>
+          <button class="btn-close" type="button" aria-label="Fermer" (click)="close()">×</button>
+        </div>
+
+        <div class="info-grid">
+          <div><span class="info-label">{{ d.opener_role === 'driver' ? 'Chauffeur' : 'Client' }}</span><strong>{{ d.opener_name || '—' }}</strong></div>
+          <div><span class="info-label">Téléphone</span><strong>{{ d.opener_phone || '—' }}</strong></div>
+          <div><span class="info-label">Course</span><strong>{{ d.ride_ref || '—' }}</strong></div>
+        </div>
+
+        <p class="description">{{ d.description }}</p>
+
+        <div class="form-grid">
+          <label class="form-field">
+            <span class="info-label">Statut</span>
+            <select class="field-select" (change)="formStatus.set($any($event.target).value)">
+              @for (s of statusOptions; track s.code) {
+                <option [value]="s.code" [selected]="s.code === formStatus()">{{ s.label }}</option>
+              }
+            </select>
+          </label>
+          <label class="form-field">
+            <span class="info-label">Priorité</span>
+            <select class="field-select" (change)="formPriority.set($any($event.target).value)">
+              @for (p of priorityOptions; track p.code) {
+                <option [value]="p.code" [selected]="p.code === formPriority()">{{ p.label }}</option>
+              }
+            </select>
+          </label>
+          <label class="form-field">
+            <span class="info-label">Assigné à</span>
+            @if (agents().length) {
+              <select class="field-select" (change)="formAssignee.set($any($event.target).value)">
+                <option value="" [selected]="!formAssignee()">Non assigné</option>
+                @for (a of agents(); track a.id) {
+                  <option [value]="a.id" [selected]="a.id === formAssignee()">{{ a.name }}</option>
+                }
+              </select>
+            } @else {
+              <strong class="static-value">{{ agentName(d.assignee) }}</strong>
+            }
+          </label>
+        </div>
+
+        <label class="form-field">
+          <span class="info-label">Résolution (obligatoire pour résoudre ou clore)</span>
+          <textarea class="field-textarea" rows="2" [value]="formResolution()" (input)="formResolution.set($any($event.target).value)"></textarea>
+        </label>
+
+        <div class="modal-actions modal-actions-split">
+          @if (d.ride_id) {
+            <button class="btn btn-light" type="button" [disabled]="busy()" (click)="openWarn()">Avertir le chauffeur</button>
+          } @else {
+            <span></span>
+          }
+          <button class="btn btn-primary" type="button" [disabled]="busy()" (click)="save()">{{ busy() ? 'Veuillez patienter…' : 'Enregistrer' }}</button>
+        </div>
+
+        @if (warning()) {
+          <div class="warn-box">
+            <span class="info-label">Message au chauffeur de la course {{ d.ride_ref }}</span>
+            <textarea class="field-textarea" rows="2" [value]="warnMessage()" (input)="warnMessage.set($any($event.target).value)" placeholder="Ex. Merci de suivre l'itinéraire proposé sauf demande du client."></textarea>
+            <div class="modal-actions">
+              <button class="btn btn-light" type="button" [disabled]="busy()" (click)="warning.set(false)">Annuler</button>
+              <button class="btn btn-primary" type="button" [disabled]="busy()" (click)="sendWarn()">Envoyer l'avertissement</button>
+            </div>
+          </div>
+        }
+
+        @if (detailError()) {
+          <div class="banner banner-inline" role="alert">{{ detailError() }}</div>
+        }
+
+        <h3 class="thread-title">Échanges</h3>
+        <div class="thread">
+          @for (m of messages(); track m.id) {
+            <div class="msg" [class.msg-admin]="m.authorType === 'ADMIN'" [class.msg-internal]="m.internal">
+              <div class="msg-head">
+                <strong>{{ authorOf(m) }}</strong>
+                @if (m.internal) { <span class="pill pill-amber">Note interne</span> }
+                <span class="msg-date">{{ formatDate(m.createdAt) }}</span>
+              </div>
+              <p>{{ m.body }}</p>
+            </div>
+          } @empty {
+            <p class="muted">Aucun message.</p>
+          }
+        </div>
+
+        <textarea class="field-textarea" rows="2" placeholder="Répondre au client ou ajouter une note interne…" [value]="replyBody()" (input)="replyBody.set($any($event.target).value)"></textarea>
+        <div class="reply-row">
+          <label class="check">
+            <input type="checkbox" [checked]="replyInternal()" (change)="replyInternal.set($any($event.target).checked)" />
+            Note interne (invisible pour le client)
+          </label>
+          <button class="btn btn-primary" type="button" [disabled]="busy() || !replyBody().trim()" (click)="sendReply()">{{ replyInternal() ? 'Ajouter la note' : 'Répondre' }}</button>
+        </div>
+      } @else if (detailLoading()) {
+        <p class="muted">Chargement…</p>
+      } @else {
+        <div class="banner" role="alert">{{ detailError() }}</div>
+        <div class="modal-actions"><button class="btn btn-light" type="button" (click)="close()">Fermer</button></div>
+      }
+    </div>
+  </div>
+}

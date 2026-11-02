@@ -1,0 +1,106 @@
+<p class="panel-intro">
+  Chaque jour, le chauffeur prend un selfie avant de passer en ligne. Il peut rouler aussitôt : comparez ensuite le selfie à la photo de son dossier.
+  Un refus le fait passer hors ligne jusqu'à un nouveau selfie.
+</p>
+
+<div class="toolbar-row">
+  <div class="filter-tabs">
+    @for (t of tabs; track t.code) {
+      <button class="filter-tab" type="button" [class.tab-active]="status() === t.code" (click)="setStatus(t.code)">
+        {{ t.label }} @if (status() === t.code && !loading()) { <span class="count">{{ total() }}</span> }
+      </button>
+    }
+  </div>
+  <div class="search-wrap">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="search" class="search-input" placeholder="Nom du chauffeur…" aria-label="Rechercher un selfie" [value]="search()" (input)="onSearch($any($event.target).value)" />
+  </div>
+</div>
+
+@if (notice()) {
+  <div class="state-banner state-ok" role="status">{{ notice() }}</div>
+}
+@if (error()) {
+  <div class="state-banner" role="alert">{{ error() }} <button class="btn-link" type="button" (click)="load()">Réessayer</button></div>
+}
+
+<div class="selfie-grid">
+  @for (s of items(); track s.id) {
+    <article class="selfie-card">
+      <div class="selfie-head">
+        <button class="link-name" type="button" [class.unnamed]="!s.firstName && !s.lastName" (click)="openDriver.emit(s.driverId)">{{ name(s) }}</button>
+        <span class="sub-line">{{ s.takenAt | date: 'EEE d MMM · HH:mm' }}</span>
+      </div>
+      @if (!s.referenceDocumentId) {
+        <p class="warn-line">Pas de photo de référence au dossier</p>
+      }
+      @if (s.status === 'REJECTED' && s.rejectionReason) {
+        <p class="sub-line">Motif : {{ s.rejectionReason }}</p>
+      }
+      @if (s.reviewedAt) {
+        <p class="sub-line">Contrôlé le {{ s.reviewedAt | date: 'd MMM HH:mm' }}</p>
+      }
+      <button class="btn-action btn-secondary" type="button" (click)="openReview(s)">
+        {{ s.status === 'PENDING' && canReview() ? 'Comparer et contrôler' : 'Voir les photos' }}
+      </button>
+    </article>
+  } @empty {
+    <p class="muted">{{ loading() ? 'Chargement…' : 'Aucun selfie.' }}</p>
+  }
+</div>
+
+@if (totalPages() > 1) {
+  <div class="pagination">
+    <span class="pag-label">Page {{ page() }} sur {{ totalPages() }}</span>
+    <div class="pag-pages">
+      <button class="pag-btn" type="button" aria-label="Page précédente" [disabled]="page() === 1" (click)="goTo(page() - 1)">‹</button>
+      <button class="pag-btn" type="button" aria-label="Page suivante" [disabled]="page() === totalPages()" (click)="goTo(page() + 1)">›</button>
+    </div>
+  </div>
+}
+
+@if (reviewing(); as s) {
+  <div class="modal-backdrop" (click)="closeReview()">
+    <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="selfie-title" (click)="$event.stopPropagation()">
+      <h2 id="selfie-title" class="modal-title">{{ name(s) }}</h2>
+      <p class="modal-sub">Selfie du {{ s.takenAt | date: 'd MMM y à HH:mm' }} · consultation inscrite au journal d'audit.</p>
+      <div class="compare">
+        @for (p of [{ label: 'Selfie du jour', photo: selfie() }, { label: 'Photo du dossier', photo: reference() }]; track p.label) {
+          <figure>
+            <div class="photo-frame">
+              @if (!p.photo) {
+                <span class="muted">Chargement…</span>
+              } @else if (p.photo.url) {
+                <img [src]="p.photo.url" [alt]="p.label + ' de ' + name(s)" />
+              } @else {
+                <span class="muted">{{ p.photo.error }}</span>
+              }
+            </div>
+            <figcaption>{{ p.label }}</figcaption>
+          </figure>
+        }
+      </div>
+
+      @if (rejecting()) {
+        <label class="form-label" for="selfie-reason">Motif du refus <small>(transmis au chauffeur)</small></label>
+        <textarea id="selfie-reason" class="form-input" rows="2" placeholder="Ce n'est pas la personne du dossier" [value]="reason()" (input)="reason.set($any($event.target).value)"></textarea>
+        <p class="hint">Si l'usurpation est confirmée, suspendez aussi le compte depuis la fiche du chauffeur.</p>
+      }
+      @if (reviewError()) {
+        <div class="state-banner" role="alert">{{ reviewError() }}</div>
+      }
+
+      <div class="modal-actions">
+        <button class="btn-action btn-secondary" type="button" [disabled]="busy()" (click)="closeReview()">Fermer</button>
+        @if (s.status === 'PENDING' && canReview()) {
+          @if (rejecting()) {
+            <button class="btn-action btn-danger" type="button" [disabled]="busy()" (click)="reject()">{{ busy() ? 'Enregistrement…' : 'Confirmer le refus' }}</button>
+          } @else {
+            <button class="btn-action btn-danger" type="button" [disabled]="busy()" (click)="rejecting.set(true)">Ce n'est pas la même personne</button>
+            <button class="btn-action btn-primary" type="button" [disabled]="busy()" (click)="approve()">{{ busy() ? 'Enregistrement…' : "C'est bien le chauffeur" }}</button>
+          }
+        }
+      </div>
+    </div>
+  </div>
+}

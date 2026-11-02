@@ -1,0 +1,171 @@
+<div class="sos-page">
+
+  <!-- En-tête -->
+  <div class="sos-head">
+    <div>
+      <h1 class="sos-title">Alertes SOS</h1>
+      <p class="sos-subtitle">Déclenchées depuis l'app client ou chauffeur, en temps réel</p>
+    </div>
+    @if (openCount() > 0) {
+      <span class="pill-alerte-cours">{{ openCount() }} alerte(s) en cours</span>
+    }
+  </div>
+
+  @if (notice()) {
+    <div class="sos-banner sos-banner-ok" role="status">{{ notice() }} <button class="btn-link" type="button" (click)="notice.set('')">Fermer</button></div>
+  }
+  @if (error()) {
+    <div class="sos-banner" role="alert">{{ error() }} <button class="btn-link" type="button" (click)="load()">Réessayer</button></div>
+  }
+
+  <!-- Corps : 3 colonnes -->
+  <div class="sos-body">
+
+    <!-- Panneau gauche : liste des alertes -->
+    <div class="sos-panel sos-panel-left">
+      <h4 class="panel-title">Alertes</h4>
+      <select class="sos-filter" (change)="onStatus($any($event.target).value)" aria-label="Filtrer par statut">
+        <option value="">Statut : tous</option>
+        @for (s of statusOptions; track s.code) {
+          <option [value]="s.code">{{ s.label }}</option>
+        }
+      </select>
+      <div class="alertes-list">
+        @for (a of alerts(); track a.id) {
+          <button
+            class="alerte-card"
+            type="button"
+            [class.alerte-active]="a.id === selectedId()"
+            [class.alerte-encours]="statusInfo(a.status).open"
+            (click)="select(a.id)"
+          >
+            <div class="alerte-stripe" [class.stripe-encours]="statusInfo(a.status).open"></div>
+            <div class="alerte-body">
+              <div class="alerte-top">
+                <span class="alerte-id">{{ a.rideRef }}</span>
+                <span
+                  class="alerte-badge"
+                  [class.badge-encours]="a.status === 'OPEN'"
+                  [class.badge-ack]="a.status === 'ACKNOWLEDGED'"
+                  [class.badge-clos]="a.status === 'RESOLVED'"
+                >
+                  {{ statusInfo(a.status).label }}
+                </span>
+              </div>
+              <div class="alerte-meta">{{ formatDate(a.createdAt) }} · par {{ who(a) }}</div>
+            </div>
+          </button>
+        } @empty {
+          <p class="sos-empty">{{ loading() ? 'Chargement…' : 'Aucune alerte.' }}</p>
+        }
+      </div>
+    </div>
+
+    <!-- Panneau central : carte -->
+    <div class="sos-panel sos-panel-map">
+      @if (selected(); as sel) {
+        <div class="map-label">Position de l'alerte · {{ sel.lat }}, {{ sel.lng }}</div>
+        <div class="map-area">
+          @if (mapUrl(); as url) {
+            <iframe class="map-frame" title="Position de l'alerte SOS" [src]="url" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+          }
+        </div>
+      } @else {
+        <div class="map-label">Position</div>
+        <p class="sos-empty">Sélectionnez une alerte.</p>
+      }
+    </div>
+
+    <!-- Panneau droit : détail de l'alerte -->
+    @if (selected(); as sel) {
+      <div class="sos-panel sos-panel-detail">
+        <div class="detail-head">
+          <span class="detail-title">Course {{ sel.rideRef }}</span>
+        </div>
+
+        <table class="detail-table">
+          <tbody>
+            <tr>
+              <td class="dt-label">Déclenchée par</td>
+              <td class="dt-val"><strong>{{ who(sel) }}{{ sel.name ? ' · ' + sel.name : '' }}</strong></td>
+            </tr>
+            <tr>
+              <td class="dt-label">Téléphone</td>
+              <td class="dt-val"><strong>{{ sel.phone || '—' }}</strong></td>
+            </tr>
+            <tr>
+              <td class="dt-label">Déclenchée</td>
+              <td class="dt-val"><strong>{{ formatDate(sel.createdAt) }}</strong></td>
+            </tr>
+            <tr>
+              <td class="dt-label">Traitée par</td>
+              <td class="dt-val"><strong>{{ sel.handledBy || '—' }}</strong></td>
+            </tr>
+            @if (sel.resolvedAt) {
+              <tr>
+                <td class="dt-label">Clôturée</td>
+                <td class="dt-val"><strong>{{ formatDate(sel.resolvedAt) }}</strong></td>
+              </tr>
+            }
+            @if (sel.notes) {
+              <tr>
+                <td class="dt-label">Compte rendu</td>
+                <td class="dt-val"><strong>{{ sel.notes }}</strong></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <div class="procedure-section">
+          <p class="procedure-label">Procédure</p>
+          <div class="procedure-steps">
+            @for (step of procedure; track step; let i = $index) {
+              <label class="step-row" [class.step-done]="isStepDone(sel, i)" (click)="$event.preventDefault(); toggleStep(sel, i)">
+                <span class="step-check" [class.checked]="isStepDone(sel, i)">
+                  @if (isStepDone(sel, i)) {
+                    <svg width="10" height="10" viewBox="0 0 10 10"><polyline points="2,5 4.2,7.5 8,3" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+                  }
+                </span>
+                <span class="step-text">{{ step }}</span>
+              </label>
+            }
+          </div>
+        </div>
+
+        <div class="detail-actions">
+          @if (sel.status === 'OPEN') {
+            <button class="btn-clore btn-ack" type="button" (click)="openAction('acknowledge')">Prendre en charge</button>
+          }
+          @if (sel.status !== 'RESOLVED') {
+            <button class="btn-clore" type="button" (click)="openAction('resolve')">Clore avec un compte rendu</button>
+          } @else {
+            <button class="btn-clore btn-disabled" type="button" disabled>Alerte clôturée</button>
+          }
+        </div>
+      </div>
+    }
+
+  </div>
+</div>
+
+@if (action(); as act) {
+  <div class="modal-backdrop" (click)="closeAction()">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sos-title" (click)="$event.stopPropagation()">
+      <h2 id="sos-title" class="modal-title">{{ act === 'acknowledge' ? 'Prendre en charge cette alerte ?' : 'Clore cette alerte ?' }}</h2>
+      <p class="modal-sub">
+        {{ act === 'acknowledge'
+          ? "L'alerte vous est attribuée. Vous pourrez la clore ensuite avec un compte rendu."
+          : "L'alerte passera en « Clos ». Résumez ce qui a été fait (appels, personnes prévenues, issue)." }}
+      </p>
+      <label class="form-label" for="sos-notes">{{ act === 'acknowledge' ? 'Note (facultatif)' : 'Compte rendu (obligatoire)' }}</label>
+      <textarea id="sos-notes" class="form-input" rows="3" [value]="notes()" (input)="notes.set($any($event.target).value)"></textarea>
+      @if (dialogError()) {
+        <div class="sos-banner banner-inline" role="alert">{{ dialogError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-light" type="button" [disabled]="busy()" (click)="closeAction()">Retour</button>
+        <button class="btn-clore btn-inline" type="button" [disabled]="busy()" (click)="submit()">{{ busy() ? 'Veuillez patienter…' : 'Confirmer' }}</button>
+      </div>
+    </div>
+  </div>
+}

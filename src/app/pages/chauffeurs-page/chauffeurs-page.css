@@ -1,0 +1,339 @@
+/* Page Chauffeurs : en-tête, onglets, liste et fiche. Styles communs : chauffeurs-shared.css. */
+
+.ch-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ch-title {
+  margin: 0 0 3px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.ch-sub {
+  margin: 0;
+  font-size: 13px;
+  color: #7a736c;
+}
+
+/* Onglets de section */
+.page-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #ede8e3;
+  overflow-x: auto;
+}
+
+.page-tabs button {
+  padding: 9px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #7a736c;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.page-tabs button.active {
+  color: #191613;
+  border-bottom-color: #ff5a00;
+}
+
+/* Liste */
+.table-card {
+  background: #fff;
+  border: 1px solid #ede8e3;
+  border-radius: 10px;
+  overflow-x: auto;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0ece8;
+}
+
+.table-card > .state-banner {
+  margin: 12px 16px 0;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table th {
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #7a736c;
+  background: #faf8f5;
+  border-bottom: 1px solid #ede8e3;
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 10px 16px;
+  vertical-align: middle;
+  line-height: 1.4;
+}
+
+.ch-row {
+  border-bottom: 1px solid #f5f2ee;
+  cursor: pointer;
+}
+
+.ch-row:hover,
+.ch-row:focus-visible {
+  background: #faf8f5;
+  outline: none;
+}
+
+.nom-line strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.td-date {
+  color: #7a736c;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.pagination {
+  border-top: 1px solid #f0ece8;
+}
+
+.pag-sel {
+  padding: 3px 8px;
+  border: 1px solid #e8e3de;
+  border-radius: 5px;
+  font-size: 12px;
+  background: #fff;
+}
+
+/* Statuts */
+.statut-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.st-draft    { background: #f1eeea; color: #5d564f; }
+.st-valide   { background: #eaf6ee; color: #128a4f; }
+.st-verif    { background: #fff8e8; color: #9a6000; }
+.st-suspendu { background: #fef2f2; color: #c42b25; }
+.st-piece    { background: #fff3e8; color: #b85c00; }
+.st-refuse   { background: #fef2f2; color: #c42b25; }
+.st-banni    { background: #191613; color: #fff; }
+
+.enligne-dot {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.dot-on  { color: #128a4f; }
+.dot-off { color: #aaa; }
+.dot-busy { color: #1967d2; }
+
+/* Statuts de course et de versement (classes de RIDE_STATUSES) */
+.ride-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.st-encours  { background: #e8f0fe; color: #1967d2; }
+.st-terminee { background: #eaf6ee; color: #128a4f; }
+.st-aucun    { background: #f1eeea; color: #5d564f; }
+.st-echoue,
+.st-incident { background: #fef2f2; color: #c42b25; }
+
+.note-val {
+  font-weight: 600;
+}
+
+/* Fiche */
+.ch-detail-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.back-link {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: #7a736c;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.back-link:hover {
+  color: #191613;
+}
+
+.ch-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ch-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #ede8e3;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ch-name-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ch-detail-name {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.ch-detail-sub {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: #7a736c;
+}
+
+.ch-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ch-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+.ch-kpi-card {
+  background: #fff;
+  border: 1px solid #ede8e3;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.kpi-label {
+  font-size: 12px;
+  color: #7a736c;
+}
+
+.kpi-value {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.kpi-subtext {
+  font-size: 11px;
+  color: #7a736c;
+}
+
+.ch-columns-grid {
+  display: grid;
+  grid-template-columns: 1.62fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.ch-columns-grid .ch-section-card:last-child {
+  margin-bottom: 0;
+}
+
+.ch-left-col .ch-section-card,
+.ch-right-col .ch-section-card {
+  margin-bottom: 16px;
+}
+
+.code-col {
+  font-weight: 700;
+}
+
+.date-col {
+  color: #7a736c;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.facts {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.facts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+}
+
+.facts dt {
+  color: #7a736c;
+}
+
+.facts dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+@media (max-width: 1100px) {
+  .ch-kpi-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .ch-columns-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .ch-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

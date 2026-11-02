@@ -1,0 +1,166 @@
+<div class="dash-main">
+  <!-- En-tête -->
+  <div class="dash-head">
+    <div>
+      <h1 class="dash-title">Tableau de bord</h1>
+      <p class="dash-subtitle">{{ headerDatetime() }}</p>
+    </div>
+    @if (error()) {
+      <span class="pill-run">{{ error() }}</span>
+    } @else {
+      <span class="pill-ok">Données en direct</span>
+    }
+  </div>
+
+  <!-- 5 Cartes KPIs -->
+  <div class="kpis">
+    @for (k of kpiList(); track k.label) {
+      <div class="kpi-card">
+        <span class="kpi-label">{{ k.label }}</span>
+        <strong class="kpi-val">{{ k.val }}</strong>
+        <span class="kpi-sub" [class.warn]="k.warn">{{ k.sub }}</span>
+      </div>
+    }
+  </div>
+
+  <!-- Ligne 1 : Courses du jour + À traiter -->
+  <div class="g2">
+    <!-- Courses du jour -->
+    <div class="card">
+      <h4 class="card-title">Courses &middot; aujourd'hui</h4>
+      <table class="t">
+        <thead>
+          <tr>
+            <th>Ligne</th>
+            <th style="text-align: right">Valeur</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (line of todayLines(); track line.label) {
+            <tr>
+              <td>{{ line.label }}</td>
+              <td style="text-align: right">{{ line.montant }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- À traiter -->
+    <div class="card">
+      <h4 class="card-title">À traiter</h4>
+      <div class="alerts-list">
+        @for (a of alerts(); track a.title) {
+          <div class="alert-row">
+            <span class="stripe" [style.background-color]="a.stripe"></span>
+            <div class="alert-info">
+              <strong>{{ a.title }}</strong>
+              <div class="alert-sub">{{ a.sub }}</div>
+            </div>
+            <a class="bbtn" [ngClass]="a.btnClass" [routerLink]="a.link">{{ a.btn }}</a>
+          </div>
+        } @empty {
+          <div class="alert-sub">Rien à traiter pour le moment.</div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Ligne 2 : Soldes du grand livre + Carte live Google Maps -->
+  <div class="g2">
+    <!-- Soldes -->
+    <div class="card">
+      <h4 class="card-title">Soldes du grand livre</h4>
+      <table class="t">
+        <thead>
+          <tr>
+            <th>Ligne</th>
+            <th style="text-align: right">Montant</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (line of ledgerLines(); track line.label) {
+            <tr>
+              <td>{{ line.label }}</td>
+              <td style="text-align: right">{{ line.montant }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <div class="card-footer-btn">
+        <a class="bbtn btn-s" routerLink="/rapports">Voir les rapports</a>
+      </div>
+    </div>
+
+    <!-- Carte live des véhicules (Google Maps) -->
+    <div class="card map-card">
+      <!-- Badge live -->
+      <span class="pill-run">{{ mapBadge() }}</span>
+
+      <!-- Conteneur Google Maps -->
+      <div #gmapContainer class="google-maps-box"></div>
+
+      <!-- Fallback interactif vectoriel Dakar si Google Maps hors-ligne/sans clé -->
+      @if (!gmapLoaded()) {
+        <div class="vector-map-overlay" aria-label="Carte géolocalisation des chauffeurs à Dakar">
+          <!-- Tracé stylisé de la presqu'île de Dakar -->
+          <svg class="mapsvg" viewBox="0 0 340 240" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <!-- Mer -->
+            <rect width="340" height="240" fill="#cde5f7" />
+            <!-- Terre / presqu'île de Dakar -->
+            <path d="M70,0 C120,40 180,50 250,30 C300,10 340,40 340,240 L60,240 C50,200 40,160 50,130 C60,100 20,60 70,0 Z" fill="#f7f4ee" />
+            
+            <!-- Axes routiers principaux (Corniche, VDN, Voie de dégagement, Autoroute) -->
+            <path d="M60,110 Q140,80 260,120 T340,150" stroke="#ffd9be" stroke-width="8" fill="none" stroke-linecap="round" />
+            <path d="M120,20 Q160,90 200,240" stroke="#ffd9be" stroke-width="7" fill="none" stroke-linecap="round" />
+            <path d="M160,240 Q220,130 300,70" stroke="#fce4d4" stroke-width="6" fill="none" />
+            <path d="M70,40 L340,190" stroke="#ffffff" stroke-width="5" fill="none" />
+            
+            <!-- Zones d'activité chaleureuses (Almadies, Plateau, Mermoz) -->
+            <circle cx="110" cy="65" r="40" fill="#ff5a00" opacity="0.14" />
+            <circle cx="250" cy="170" r="48" fill="#ff5a00" opacity="0.12" />
+            <circle cx="180" cy="120" r="32" fill="#ff5a00" opacity="0.10" />
+          </svg>
+
+          <!-- Véhicules géolocalisés en direct sur la carte -->
+          @for (v of vehicles(); track v.id) {
+            <button
+              class="car-marker"
+              [style.top.%]="(v.lat - 14.65) * 600"
+              [style.left.%]="(v.lng + 17.53) * 350"
+              [style.transform]="'rotate(' + v.rotation + 'deg)'"
+              [title]="v.driverName + ' · ' + v.plate"
+              (click)="selectVehicle(v)"
+              aria-label="Chauffeur géolocalisé"
+            >
+              <svg width="26" height="14" viewBox="0 0 32 18">
+                <rect x="2" y="1" width="28" height="16" rx="4" fill="#141210" stroke="#ffffff" stroke-width="1.5" />
+                <rect x="7" y="3" width="7" height="12" rx="2" fill="#ffffff" opacity="0.85" />
+                <rect x="18" y="3" width="7" height="12" rx="2" fill="#ffffff" opacity="0.6" />
+                <circle cx="6" cy="1" r="1.5" fill="#ff5a00" />
+                <circle cx="26" cy="1" r="1.5" fill="#ff5a00" />
+              </svg>
+            </button>
+          }
+        </div>
+      }
+
+      <!-- Volet d'info chauffeur au clic -->
+      @if (selectedVehicle(); as sel) {
+        <div class="vehicle-info-pop">
+          <div class="pop-header">
+            <strong>{{ sel.driverName }}</strong>
+            <span class="pop-plate">{{ sel.plate }}</span>
+            <button class="pop-close" (click)="selectedVehicle.set(null)">&times;</button>
+          </div>
+          <div class="pop-body">
+            <span>{{ sel.category }} &bull; {{ sel.lastSeen }}</span>
+            <span class="status-tag" [class.tag-ride]="sel.busy">
+              {{ sel.status }}
+            </span>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>
