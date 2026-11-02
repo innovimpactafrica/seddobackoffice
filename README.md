@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # SeddoBackoffice
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.5.
@@ -61,3 +61,6 @@ For more information on using the Angular CLI, including detailed command refere
 =======
 # seddobackoffice
 >>>>>>> 493f6bcceb1c2f3e8656629729c2abe39e910198
+=======
+# seddobackoffice
+>>>>>>> a02284352f94be37eef8abe0eccfbc8007387650
