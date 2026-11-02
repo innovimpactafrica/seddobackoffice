@@ -1,7 +1,3 @@
-# À lancer depuis la racine du projet :
-#   docker build -f docker/Dockerfile -t seddo-backoffice .
-#   docker run -p 8080:80 seddo-backoffice
-
 # Étape 1 : build Angular
 FROM node:22-alpine AS builder
 
