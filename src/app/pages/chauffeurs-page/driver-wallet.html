@@ -1,0 +1,141 @@
+@if (notice()) {
+  <div class="state-banner state-ok" role="status">{{ notice() }}</div>
+}
+
+@if (loading() && !wallet()) {
+  <p class="muted">Chargement du portefeuille…</p>
+} @else if (error()) {
+  <div class="state-banner" role="alert">{{ error() }} <button class="btn-link" type="button" (click)="load()">Réessayer</button></div>
+} @else if (wallet(); as w) {
+  <div class="wallet-head">
+    <div class="wallet-status">
+      @if (!w.cashEnabled) {
+        <span class="w-pill w-gray">Espèces désactivées sur la plateforme</span>
+      } @else if (w.cashBlocked) {
+        <span class="w-pill w-red">Espèces bloquées</span>
+      } @else {
+        <span class="w-pill w-green">Espèces autorisées</span>
+      }
+      @if (w.lowBalance) {
+        <span class="w-pill w-orange">Sous la réserve</span>
+      }
+    </div>
+    @if (canManage()) {
+      <div class="wallet-actions">
+        <button class="btn-action btn-secondary" type="button" (click)="openAdjust()">Ajuster le solde</button>
+        @if (w.cashBlocked) {
+          <button class="btn-action btn-primary" type="button" (click)="openCash(false)">Débloquer les espèces</button>
+        } @else {
+          <button class="btn-action btn-danger" type="button" (click)="openCash(true)">Bloquer les espèces</button>
+        }
+      </div>
+    }
+  </div>
+
+  @if (w.message) {
+    <p class="wallet-message"><strong>Message affiché au chauffeur :</strong> {{ w.message }}</p>
+  }
+
+  <div class="wallet-kpis">
+    <div class="w-kpi">
+      <span class="w-label">Disponible</span>
+      <strong class="w-value" [class.neg]="w.available < w.minReserve">{{ money(w.available) }}</strong>
+      <span class="w-sub">solde − réservé</span>
+    </div>
+    <div class="w-kpi">
+      <span class="w-label">Solde</span>
+      <strong class="w-value">{{ money(w.balance) }}</strong>
+      <span class="w-sub">rechargements et ajustements</span>
+    </div>
+    <div class="w-kpi">
+      <span class="w-label">Réservé</span>
+      <strong class="w-value">{{ money(w.reserved) }}</strong>
+      <span class="w-sub">commissions des courses en cours</span>
+    </div>
+    <div class="w-kpi">
+      <span class="w-label">Commission max. couverte</span>
+      <strong class="w-value">{{ money(w.maxCommission) }}</strong>
+      <span class="w-sub">réserve minimale : {{ money(w.minReserve) }}</span>
+    </div>
+  </div>
+
+  @if (w.holds.length) {
+    <div class="ch-section-card">
+      <h3 class="ch-section-title">Montants réservés</h3>
+      <table class="ch-sub-table">
+        <thead><tr><th>Course</th><th>Date</th><th class="num">Montant</th></tr></thead>
+        <tbody>
+          @for (h of w.holds; track $index) {
+            <tr>
+              <td class="code-col">{{ h.ride?.ref ?? h.id ?? '—' }}</td>
+              <td>{{ (h.at ?? h.createdAt) ? ((h.at ?? h.createdAt) | date: 'd MMM HH:mm') : '—' }}</td>
+              <td class="num">{{ h.amount !== undefined ? money(h.amount) : '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <div class="ch-section-card">
+    <h3 class="ch-section-title">Mouvements</h3>
+    @if (w.entries.length) {
+      <table class="ch-sub-table">
+        <thead><tr><th>Date</th><th>Type</th><th>Motif</th><th class="num">Montant</th></tr></thead>
+        <tbody>
+          @for (e of w.entries; track e.id) {
+            <tr>
+              <td class="nowrap">{{ e.at | date: 'd MMM y HH:mm' }}</td>
+              <td>
+                {{ entryType(e) }}
+                @if (entryRef(e); as ref) { <div class="sub-line mono">{{ ref }}</div> }
+              </td>
+              <td>{{ e.reason || '—' }}</td>
+              <td class="num amount" [class.pos]="e.amount > 0" [class.neg]="e.amount < 0">{{ signed(e.amount) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else {
+      <p class="muted">Aucun mouvement.</p>
+    }
+  </div>
+}
+
+@if (dialog(); as d) {
+  <div class="modal-backdrop" (click)="close()">
+    <form class="modal" role="dialog" aria-modal="true" aria-labelledby="wallet-title" (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); submit()">
+      @if (d.kind === 'adjust') {
+        <h2 id="wallet-title" class="modal-title">Ajuster le portefeuille</h2>
+        <p class="modal-sub">Après une réclamation : le mouvement apparaît au chauffeur avec le motif.</p>
+        <div class="segmented" role="radiogroup" aria-label="Sens de l'ajustement">
+          <button type="button" role="radio" [class.active]="direction() === 'credit'" [attr.aria-checked]="direction() === 'credit'" (click)="direction.set('credit')">Créditer</button>
+          <button type="button" role="radio" [class.active]="direction() === 'debit'" [attr.aria-checked]="direction() === 'debit'" (click)="direction.set('debit')">Débiter</button>
+        </div>
+        <label class="form-label" for="w-amount">Montant (F CFA)</label>
+        <input id="w-amount" class="form-input" type="text" inputmode="numeric" autocomplete="off" [value]="amount()" (input)="amount.set($any($event.target).value)" />
+        @if (signedAmount(); as a) {
+          @if (wallet(); as w) {
+            <p class="hint">Disponible après ajustement : {{ money(w.available + a) }}</p>
+          }
+        }
+      } @else {
+        <h2 id="wallet-title" class="modal-title">{{ d.block ? 'Bloquer les courses en espèces ?' : 'Débloquer les courses en espèces ?' }}</h2>
+        <p class="modal-sub">
+          {{ d.block
+            ? 'Le chauffeur ne recevra plus de courses payées en espèces ; le motif lui est affiché dans son app.'
+            : 'Le chauffeur pourra de nouveau recevoir des courses en espèces si son disponible le permet.' }}
+        </p>
+      }
+      <label class="form-label" for="w-reason">Motif (obligatoire)</label>
+      <input id="w-reason" class="form-input" type="text" autocomplete="off" [value]="reason()" (input)="reason.set($any($event.target).value)" />
+      @if (dialogError()) {
+        <div class="state-banner" role="alert">{{ dialogError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-action btn-secondary" type="button" [disabled]="busy()" (click)="close()">Annuler</button>
+        <button class="btn-action" [class.btn-danger]="d.kind === 'cash' && d.block" [class.btn-primary]="!(d.kind === 'cash' && d.block)" type="submit" [disabled]="busy()">{{ busy() ? 'Enregistrement…' : 'Confirmer' }}</button>
+      </div>
+    </form>
+  </div>
+}

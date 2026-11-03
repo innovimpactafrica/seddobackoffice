@@ -1,0 +1,107 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.wallet-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.wallet-status,
+.wallet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.w-pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.w-green { background: #e3f4e8; color: #1f7a45; }
+.w-red { background: #fde8e8; color: #b3261e; }
+.w-orange { background: #fff4e5; color: #b45309; }
+.w-gray { background: #eeeae4; color: #5d564f; }
+
+.wallet-message {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #fff4e5;
+  color: #7c4a03;
+  font-size: 12.5px;
+}
+
+.wallet-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.w-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #ede8e3;
+  border-radius: 10px;
+}
+
+.w-label {
+  font-size: 11.5px;
+  color: #7a736c;
+}
+
+.w-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: #191613;
+  font-variant-numeric: tabular-nums;
+}
+
+.w-value.neg {
+  color: #b3261e;
+}
+
+.w-sub {
+  font-size: 11px;
+  color: #8c857e;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.code-col {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11.5px;
+}
+
+.amount {
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.amount.pos { color: #1f7a45; }
+.amount.neg { color: #b3261e; }
+
+.segmented {
+  margin-top: 6px;
+}
+
+@media (max-width: 900px) {
+  .wallet-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -187,6 +187,59 @@ export interface DailySelfie {
   referenceDocumentId: string | null;
 }
 
+/** Ligne de GET /wallets : portefeuille d'un chauffeur (montants en F CFA). */
+export interface WalletListItem {
+  driverId: string;
+  firstName: string | null;
+  lastName: string | null;
+  phone: string;
+  balance: number;
+  /** Commissions retenues sur les courses en espèces en cours. */
+  reserved: number;
+  available: number;
+  cashEnabled: boolean;
+  cashBlocked: boolean;
+  blockedReason: string | null;
+  lastTopupAt: string | null;
+}
+
+export type WalletFilter = 'below_reserve' | 'blocked';
+
+/** Mouvement du portefeuille ; `ride` et `topup` ne sont renseignés que pour ces types (forme non documentée). */
+export interface WalletEntry {
+  id: string;
+  /** ADJUSTMENT, et selon les courses et rechargements (types non documentés). */
+  type: string;
+  /** Signé : + crédit, − débit. */
+  amount: number;
+  at: string;
+  reason: string | null;
+  ride: { id?: string; ref?: string } | null;
+  topup: { id?: string; ref?: string } | null;
+}
+
+/** Fiche portefeuille (GET /wallets/{driverId}), renvoyée aussi après un ajustement ou un blocage. */
+export interface WalletDetail {
+  currency: string;
+  available: number;
+  balance: number;
+  reserved: number;
+  /** Réserve minimale exigée en plus de la commission pour recevoir une course en espèces. */
+  minReserve: number;
+  /** Commission maximale couverte par le disponible (disponible − réserve minimale). */
+  maxCommission: number;
+  cashEnabled: boolean;
+  cashBlocked: boolean;
+  blockedReason: string | null;
+  lowBalance: boolean;
+  /** Message affiché au chauffeur dans son app. */
+  message: string | null;
+  topupAmounts: number[];
+  /** Montants retenus sur des courses en cours (forme non documentée). */
+  holds: { id?: string; amount?: number; ride?: { ref?: string } | null; at?: string; createdAt?: string }[];
+  entries: WalletEntry[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class DriversService {
   private readonly api = inject(ApiService);
@@ -259,6 +312,23 @@ export class DriversService {
 
   selfieReference(id: string): Observable<Blob> {
     return this.api.getBlob(API_ENDPOINTS.drivers.selfieReference(id));
+  }
+
+  wallets(params: { q?: string; filter?: WalletFilter }): Observable<WalletListItem[]> {
+    return this.api.get<WalletListItem[]>(API_ENDPOINTS.wallets.list, params);
+  }
+
+  wallet(driverId: string): Observable<WalletDetail> {
+    return this.api.get<WalletDetail>(API_ENDPOINTS.wallets.detail(driverId));
+  }
+
+  /** Ajustement par la Finance : montant signé (+ crédite, − débite), motif obligatoire. */
+  adjustWallet(driverId: string, amount: number, reason: string): Observable<WalletDetail> {
+    return this.api.post<WalletDetail>(API_ENDPOINTS.wallets.adjust(driverId), { amount, reason });
+  }
+
+  setCashBlocked(driverId: string, blocked: boolean, reason: string): Observable<WalletDetail> {
+    return this.api.put<WalletDetail>(API_ENDPOINTS.wallets.cashBlock(driverId), { blocked, reason });
   }
 
   approveSelfie(id: string): Observable<unknown> {

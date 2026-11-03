@@ -1,0 +1,69 @@
+<p class="panel-intro">Le disponible d'un chauffeur couvre la commission Seddo des courses payées en espèces. Sous la réserve minimale, il ne reçoit plus ces courses.</p>
+
+<div class="toolbar-row">
+  <div class="filter-tabs">
+    @for (f of filters; track f.code) {
+      <button class="filter-tab" type="button" [class.tab-active]="filter() === f.code" (click)="setFilter(f.code)">{{ f.label }}</button>
+    }
+  </div>
+  <div class="search-wrap">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="search" class="search-input" placeholder="Nom ou téléphone…" aria-label="Rechercher un portefeuille" [value]="search()" (input)="onSearch($any($event.target).value)" />
+  </div>
+</div>
+
+@if (error()) {
+  <div class="state-banner" role="alert">{{ error() }} <button class="btn-link" type="button" (click)="load()">Réessayer</button></div>
+}
+
+<div class="w-table-card" [class.stale]="loading()">
+  <table class="w-table">
+    <thead>
+      <tr>
+        <th>Chauffeur</th>
+        <th class="num">Solde</th>
+        <th class="num">Réservé</th>
+        <th class="num">Disponible</th>
+        <th>Espèces</th>
+        <th>Dernier rechargement</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (w of wallets(); track w.driverId) {
+        <tr class="w-row" tabindex="0" (click)="openDriver.emit(w.driverId)" (keydown.enter)="openDriver.emit(w.driverId)">
+          <td>
+            <strong [class.unnamed]="!w.firstName && !w.lastName">{{ name(w) }}</strong>
+            <div class="sub-line mono">{{ w.phone }}</div>
+          </td>
+          <td class="num">{{ money(w.balance) }}</td>
+          <td class="num">{{ w.reserved ? money(w.reserved) : '—' }}</td>
+          <td class="num"><strong>{{ money(w.available) }}</strong></td>
+          <td>
+            @if (!w.cashEnabled) {
+              <span class="w-pill w-gray">Désactivées</span>
+            } @else if (w.cashBlocked) {
+              <span class="w-pill w-red" [attr.title]="w.blockedReason">Bloquées</span>
+              @if (w.blockedReason) { <div class="sub-line">{{ w.blockedReason }}</div> }
+            } @else {
+              <span class="w-pill w-green">Autorisées</span>
+            }
+          </td>
+          <td>{{ w.lastTopupAt ? (w.lastTopupAt | date: 'd MMM y HH:mm') : 'Jamais' }}</td>
+        </tr>
+      } @empty {
+        <tr><td colspan="6" class="empty-cell">{{ loading() ? 'Chargement…' : 'Aucun portefeuille.' }}</td></tr>
+      }
+    </tbody>
+    @if (wallets().length) {
+      <tfoot>
+        <tr>
+          <td>{{ wallets().length }} portefeuille{{ wallets().length > 1 ? 's' : '' }}</td>
+          <td class="num">{{ money(totals().balance) }}</td>
+          <td class="num">{{ money(totals().reserved) }}</td>
+          <td class="num">{{ money(totals().balance - totals().reserved) }}</td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+    }
+  </table>
+</div>

@@ -90,7 +90,8 @@ export class App {
       items: [
         { label: 'Tarifs et commission', icon: '', path: '/tarification' },
         { label: 'Utilisateurs',         icon: '', path: '/utilisateurs' },
-        { label: "Journal d'audit",      icon: '', path: '/journal-audit' }
+        { label: "Journal d'audit",      icon: '', path: '/journal-audit' },
+        { label: 'Paramètres',           icon: '', path: '/parametres' }
       ]
     }
   ];

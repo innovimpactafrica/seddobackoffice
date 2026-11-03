@@ -6,8 +6,10 @@ import { forkJoin, map, Observable } from 'rxjs';
 import { AuthService } from '../../auth/auth.service';
 import { DocumentTypesPanel } from './document-types-panel';
 import { DriverDossier } from './driver-dossier';
+import { DriverWallet } from './driver-wallet';
 import { DriverAction, DriverDetail, DriverPayout, DriverListItem, driverName, DriversService, DriverStatus } from './drivers.service';
 import { SelfiesPanel } from './selfies-panel';
+import { WalletsPanel } from './wallets-panel';
 import { RIDE_STATUSES, RideStatus, RideStatusInfo } from '../courses-page/rides.service';
 
 interface StatusInfo {
@@ -70,14 +72,15 @@ const PAYOUT_STATUSES: Record<string, { label: string; css: string }> = {
 
 const SEARCH_DELAY_MS = 350;
 
-type Tab = 'drivers' | 'selfies' | 'types';
+type Tab = 'drivers' | 'selfies' | 'wallets' | 'types';
+type FicheTab = 'activity' | 'dossier' | 'wallet';
 
 /** Fenêtres de la fiche autres que le changement de statut. */
 type FicheDialog = 'reveal' | 'payout';
 
 @Component({
   selector: 'app-chauffeurs-page',
-  imports: [DatePipe, DecimalPipe, SelfiesPanel, DocumentTypesPanel, DriverDossier],
+  imports: [DatePipe, DecimalPipe, SelfiesPanel, WalletsPanel, DocumentTypesPanel, DriverDossier, DriverWallet],
   templateUrl: './chauffeurs-page.html',
   styleUrls: ['./chauffeurs-shared.css', './chauffeurs-page.css']
 })
@@ -127,6 +130,17 @@ export class ChauffeursPage implements OnInit, OnDestroy {
   /** DRIVER_VALIDATE_SUSPEND : Admin et Ops. */
   protected readonly canAct = computed(() => ['ADMIN', 'OPS'].includes(this.role()));
   protected readonly isAdmin = computed(() => this.role() === 'ADMIN');
+  /** Ajustement du portefeuille et blocage des espèces : Finance et Admin. */
+  protected readonly canManageWallet = computed(() => ['ADMIN', 'FINANCE'].includes(this.role()));
+
+  /** Onglet de la fiche choisi ; null = selon le contexte (dossier à examiner, portefeuille pour la Finance, sinon activité). */
+  protected readonly ficheTab = signal<FicheTab | null>(null);
+  protected readonly activeFicheTab = computed<FicheTab>(() => {
+    const chosen = this.ficheTab();
+    if (chosen) return chosen;
+    if (this.role() === 'FINANCE') return 'wallet';
+    return this.detail()?.status === 'VALIDATED' ? 'activity' : 'dossier';
+  });
   /** PAYOUT_MSISDN_CHANGE : Admin (direct) ou Ops (demande), validé ensuite par la Finance. */
   protected readonly canRequestPayout = computed(() => ['ADMIN', 'OPS'].includes(this.role()));
 
@@ -264,8 +278,9 @@ export class ChauffeursPage implements OnInit, OnDestroy {
     });
   }
 
-  protected openDriver(id: string): void {
+  protected openDriver(id: string, ficheTab: FicheTab | null = null): void {
     this.tab.set('drivers');
+    this.ficheTab.set(ficheTab);
     this.selectedId.set(id);
     this.notice.set('');
     this.revealedPhone.set(null);

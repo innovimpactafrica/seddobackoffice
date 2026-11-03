@@ -20,7 +20,11 @@ export const API_ENDPOINTS = {
     overview: '/v1/admin/tariffs',
     history: '/v1/admin/tariffs/history',
     commissionRules: '/v1/admin/commission-rules',
+    commissionRule: (id: string) => `/v1/admin/commission-rules/${id}`,
     endCommissionRule: (id: string) => `/v1/admin/commission-rules/${id}/end`,
+    pricingRules: '/v1/admin/pricing-rules',
+    endPricingRule: (id: string) => `/v1/admin/pricing-rules/${id}/end`,
+    categories: '/v1/admin/categories',
     category: (code: string) => `/v1/admin/categories/${code}`
   },
   dashboard: {
@@ -81,6 +85,12 @@ export const API_ENDPOINTS = {
     approveSelfie: (id: string) => `/v1/admin/daily-selfies/${id}/approve`,
     rejectSelfie: (id: string) => `/v1/admin/daily-selfies/${id}/reject`
   },
+  wallets: {
+    list: '/v1/admin/wallets',
+    detail: (driverId: string) => `/v1/admin/wallets/${driverId}`,
+    adjust: (driverId: string) => `/v1/admin/wallets/${driverId}/adjustments`,
+    cashBlock: (driverId: string) => `/v1/admin/wallets/${driverId}/cash-block`
+  },
   zones: {
     /** Public : contours simplifiés des zones actives. */
     active: '/v1/zones/active',
@@ -99,7 +109,10 @@ export const API_ENDPOINTS = {
     ridesCsv: '/v1/admin/reports/rides.csv'
   },
   settings: {
-    list: '/v1/admin/settings'
+    list: '/v1/admin/settings',
+    update: (key: string) => `/v1/admin/settings/${key}`,
+    /** Clés Google Maps des apps (Android, iOS, web). */
+    appParams: '/v1/admin/app-params'
   },
   auditLogs: {
     list: '/v1/admin/audit-logs',

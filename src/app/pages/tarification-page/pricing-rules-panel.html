@@ -1,0 +1,194 @@
+<div class="grid-head">
+  <h2 class="section-title">Grilles tarifaires</h2>
+  <button class="btn-soft" type="button" (click)="openCreate()">Nouvelle grille</button>
+</div>
+<p class="grid-note">Une grille horaire (Nuit, Week-end…) l'emporte sur la grille Standard pendant ses plages. Les courses passées gardent leur grille.</p>
+
+<div class="toolbar">
+  <div class="rule-tabs" role="tablist" aria-label="Statut des grilles">
+    @for (f of filters; track f.code) {
+      <button type="button" role="tab" class="rule-tab" [class.active]="filter() === f.code" [attr.aria-selected]="filter() === f.code" (click)="filter.set(f.code)">
+        {{ f.label }} <span class="rule-count">{{ counts()[f.code] }}</span>
+      </button>
+    }
+  </div>
+  <select class="zone-select" aria-label="Zone" (change)="zoneFilter.set($any($event.target).value)">
+    <option value="">Toutes les zones</option>
+    <option value="default">Par défaut (toutes zones)</option>
+    @for (z of zones(); track z.id) {
+      <option [value]="z.id">{{ z.name }}</option>
+    }
+  </select>
+  <select class="zone-select" aria-label="Catégorie" (change)="categoryFilter.set($any($event.target).value)">
+    <option value="">Toutes les catégories</option>
+    @for (c of categories(); track c.code) {
+      <option [value]="c.code">{{ c.name }}</option>
+    }
+  </select>
+</div>
+
+@if (error()) {
+  <div class="state-banner" role="alert">{{ error() }} <button class="th-action inline" type="button" (click)="load()">Réessayer</button></div>
+}
+@if (notice()) {
+  <div class="state-banner success" role="status">{{ notice() }}</div>
+}
+
+<div class="table-card grid-card">
+  <div class="grid-scroll">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Zone</th>
+          <th>Catégorie</th>
+          <th>Grille</th>
+          <th>Prix</th>
+          <th>Frais</th>
+          <th>Majoration max</th>
+          <th>Validité</th>
+          <th>Motif</th>
+          <th>Statut</th>
+          <th><span class="sr-only">Action</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of visible(); track r.id) {
+          <tr>
+            <td>{{ r.zoneName ?? 'Par défaut' }}</td>
+            <td class="nowrap">{{ categoryName(r.category) }}</td>
+            <td>
+              <strong>{{ r.label }}</strong>
+              <span class="cell-sub">{{ slotsLabel(r.timeSlots) }}</span>
+            </td>
+            <td class="nowrap">
+              {{ money(r.baseFare) }} + {{ money(r.perKm) }}/km + {{ money(r.perMin) }}/min
+              <span class="cell-sub">Minimum {{ money(r.minimumFare) }}@if (r.bookingFee) { · réservation {{ money(r.bookingFee) }} }</span>
+            </td>
+            <td class="nowrap">
+              Annulation {{ money(r.cancelFee) }}
+              <span class="cell-sub">Absence {{ money(r.noShowFee) }} · retour {{ money(r.returnFeePerKm) }}/km</span>
+            </td>
+            <td class="nowrap">{{ surge(r) }}</td>
+            <td class="nowrap">
+              Du {{ r.validFrom | date: 'dd/MM/yyyy HH:mm' }}
+              <span class="cell-sub">{{ r.validTo ? 'Au ' + (r.validTo | date: 'dd/MM/yyyy HH:mm') : 'Sans fin' }}</span>
+            </td>
+            <td>{{ r.reason || '—' }}</td>
+            <td><span [class]="'pill ' + states[state(r)].pill">{{ stateLabel(r) }}</span></td>
+            <td class="action-cell">
+              @if (canEnd(r)) {
+                <button class="th-action" type="button" (click)="openEnd(r)">Terminer</button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="10">{{ loading() ? 'Chargement…' : 'Aucune grille.' }}</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@if (dialog(); as d) {
+  <div class="modal-backdrop" (click)="close()">
+    <form class="modal" [class.modal-wide]="d.kind === 'create'" role="dialog" aria-modal="true" aria-labelledby="grid-dlg-title" (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); submit()">
+      @if (d.kind === 'end') {
+        <h2 id="grid-dlg-title" class="modal-title">Mettre fin à la grille ?</h2>
+        <p class="modal-sub">
+          {{ d.rule.label }} · {{ categoryName(d.rule.category) }} · {{ d.rule.zoneName ?? 'Par défaut' }}.
+          @if (d.rule.label === 'Standard') { Sans grille Standard, cette zone et cette catégorie reprennent la grille par défaut. }
+          Les courses passées gardent leur grille.
+        </p>
+      } @else {
+        @let f = form();
+        <h2 id="grid-dlg-title" class="modal-title">Nouvelle grille tarifaire</h2>
+        <p class="modal-sub">Une grille de même zone, catégorie et nom remplace la version en vigueur.</p>
+
+        <div class="form-row three">
+          <div>
+            <label class="form-label" for="g-zone">Zone</label>
+            <select id="g-zone" class="form-input" (change)="setScope('zoneId', $any($event.target).value)">
+              <option value="" [selected]="!f.zoneId">Par défaut (toutes zones)</option>
+              @for (z of zones(); track z.id) {
+                <option [value]="z.id" [selected]="f.zoneId === z.id">{{ z.name }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label class="form-label" for="g-category">Catégorie</label>
+            <select id="g-category" class="form-input" (change)="setScope('category', $any($event.target).value)">
+              @for (c of categories(); track c.code) {
+                <option [value]="c.code" [selected]="f.category === c.code">{{ c.name }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label class="form-label" for="g-label">Nom de la grille</label>
+            <input id="g-label" class="form-input" type="text" list="g-labels" [value]="f.label" (input)="setField('label', $any($event.target).value)" />
+            <datalist id="g-labels">
+              @for (l of labels(); track l) { <option [value]="l"></option> }
+            </datalist>
+          </div>
+        </div>
+
+        <span class="form-label">Plages horaires <small>(heure de Dakar ; aucune plage = toute la journée)</small></span>
+        @for (s of f.slots; track $index; let i = $index) {
+          <div class="slot-row">
+            <div class="day-picks" role="group" aria-label="Jours">
+              @for (day of days; track day.n) {
+                <button type="button" class="day-pick" [class.active]="s.days.includes(day.n)" [attr.aria-pressed]="s.days.includes(day.n)" (click)="toggleDay(i, day.n)">{{ day.short }}</button>
+              }
+            </div>
+            <input class="form-input time" type="time" aria-label="De" [value]="s.from" (input)="setSlotTime(i, 'from', $any($event.target).value)" />
+            <span class="slot-sep">à</span>
+            <input class="form-input time" type="time" aria-label="À" [value]="s.to" (input)="setSlotTime(i, 'to', $any($event.target).value)" />
+            <button class="btn-trash" type="button" aria-label="Retirer la plage" (click)="removeSlot(i)">×</button>
+          </div>
+        }
+        <button class="th-action" type="button" (click)="addSlot()">+ Ajouter une plage</button>
+
+        <span class="form-label">Montants <small>(préremplis avec la grille Standard en vigueur)</small></span>
+        <div class="amount-grid">
+          @for (a of amountFields; track a.key) {
+            <label class="amount">
+              <span>{{ a.label }}</span>
+              <span class="amount-field">
+                <input class="form-input" type="text" inputmode="decimal" [value]="f.amounts[a.key]" (input)="setAmount(a.key, $any($event.target).value)" />
+                <span class="amount-unit">{{ a.unit }}</span>
+              </span>
+            </label>
+          }
+          <label class="amount">
+            <span>Majoration max</span>
+            <span class="amount-field">
+              <input class="form-input" type="text" inputmode="decimal" [value]="f.surgeMax" (input)="setField('surgeMax', $any($event.target).value)" />
+              <span class="amount-unit">×</span>
+            </span>
+          </label>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <label class="form-label" for="g-from">Début <small>(vide = immédiat)</small></label>
+            <input id="g-from" class="form-input" type="datetime-local" [value]="f.validFrom" (input)="setField('validFrom', $any($event.target).value)" />
+          </div>
+          <div>
+            <label class="form-label" for="g-to">Fin <small>(vide = sans fin)</small></label>
+            <input id="g-to" class="form-input" type="datetime-local" [value]="f.validTo" (input)="setField('validTo', $any($event.target).value)" />
+          </div>
+        </div>
+      }
+
+      <label class="form-label" for="g-reason">Motif (obligatoire)</label>
+      <input id="g-reason" class="form-input" type="text" autocomplete="off" [value]="reason()" (input)="reason.set($any($event.target).value)" />
+
+      @if (dialogError()) {
+        <div class="state-banner" role="alert">{{ dialogError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-soft" type="button" [disabled]="busy()" (click)="close()">Annuler</button>
+        <button class="btn-primary" type="submit" [disabled]="busy()">{{ busy() ? 'Enregistrement…' : 'Confirmer' }}</button>
+      </div>
+    </form>
+  </div>
+}

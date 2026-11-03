@@ -4,25 +4,38 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import {
   CommissionException,
+  CommissionRule,
   NewCommissionRule,
   TariffCategory,
   TariffHistoryItem,
   TariffsOverview,
   TariffsService,
-  UpdateTariffsBody
+  UpdateTariffsBody,
+  VehicleCategory
 } from './tariffs.service';
+import { PricingRulesPanel } from './pricing-rules-panel';
+
+type RuleState = 'current' | 'scheduled' | 'ended';
+type RuleFilter = RuleState | 'all';
+
+const RULE_STATES: Record<RuleState, { label: string; pill: string }> = {
+  current: { label: 'En vigueur', pill: 'pill-green' },
+  scheduled: { label: 'Programmée', pill: 'pill-blue' },
+  ended: { label: 'Terminée', pill: 'pill-gray' }
+};
 
 type Dialog =
   | { kind: 'save' }
   | { kind: 'add' }
   | { kind: 'delete'; rule: CommissionException }
+  | { kind: 'end'; rule: CommissionRule }
   | { kind: 'category'; category: TariffCategory };
 
 @Component({
   selector: 'app-tarification-page',
-  imports: [DatePipe, DecimalPipe],
+  imports: [DatePipe, DecimalPipe, PricingRulesPanel],
   templateUrl: './tarification-page.html',
-  styleUrl: './tarification-page.css'
+  styleUrls: ['./tarification-shared.css', './tarification-page.css']
 })
 export class TarificationPage implements OnInit {
   private readonly service = inject(TariffsService);
@@ -115,11 +128,110 @@ export class TarificationPage implements OnInit {
     { code: 'ZONE', label: 'Zone' }
   ];
 
-  protected readonly zones = computed(() => (this.overview()?.zones ?? []).filter(z => z.id !== null));
+  /** Toutes les règles de commission (en vigueur, programmées et terminées). */
+  protected readonly rules = signal<CommissionRule[]>([]);
+  protected readonly rulesLoading = signal(false);
+  protected readonly rulesError = signal('');
+  protected readonly ruleFilter = signal<RuleFilter>('current');
+  protected readonly ruleFilters: { code: RuleFilter; label: string }[] = [
+    { code: 'current', label: 'En vigueur' },
+    { code: 'scheduled', label: 'Programmées' },
+    { code: 'ended', label: 'Terminées' },
+    { code: 'all', label: 'Toutes' }
+  ];
+  protected readonly ruleStates = RULE_STATES;
+
+  protected readonly ruleCounts = computed(() => {
+    const counts: Record<RuleFilter, number> = { current: 0, scheduled: 0, ended: 0, all: 0 };
+    for (const r of this.rules()) {
+      counts[this.ruleState(r)]++;
+      counts.all++;
+    }
+    return counts;
+  });
+
+  /** Règles du filtre choisi, la plus récente d'abord. */
+  protected readonly visibleRules = computed(() => {
+    const filter = this.ruleFilter();
+    return this.rules()
+      .filter(r => filter === 'all' || this.ruleState(r) === filter)
+      .sort((a, b) => b.validFrom.localeCompare(a.validFrom));
+  });
+
+  /** Catégories de véhicule (toutes, même désactivées), dans l'ordre de l'API. */
+  protected readonly categories = signal<VehicleCategory[]>([]);
+  protected readonly categoryOptions = computed(() => {
+    const list = this.categories();
+    if (list.length) return [...list].sort((a, b) => a.sortOrder - b.sortOrder);
+    return (this.overview()?.tariffs.categories ?? []).map(c => ({ code: c.code, name: c.name, seats: 0, active: c.active, sortOrder: 0 }));
+  });
+
+  protected readonly zones = computed(() =>
+    (this.overview()?.zones ?? []).filter((z): z is { id: string; name: string; kind: string | null } => z.id !== null)
+  );
+
+  /** Une grille tarifaire a changé : la carte Tarifs et l'historique en dépendent. */
+  protected onPricingChanged(): void {
+    this.loadOverview();
+    this.page.set(1);
+    this.loadHistory();
+  }
 
   ngOnInit(): void {
     this.loadOverview();
     this.loadHistory();
+    this.loadRules();
+    this.service.categories().subscribe({ next: list => this.categories.set(list), error: () => {} });
+  }
+
+  protected loadRules(): void {
+    this.rulesLoading.set(true);
+    this.service.rules().subscribe({
+      next: list => {
+        this.rules.set(list);
+        this.rulesError.set('');
+        this.rulesLoading.set(false);
+      },
+      error: err => {
+        const offline = err instanceof HttpErrorResponse && err.status === 0;
+        this.rulesError.set(offline ? 'Impossible de joindre le serveur.' : 'Impossible de charger les règles de commission.');
+        this.rulesLoading.set(false);
+      }
+    });
+  }
+
+  /** En vigueur / programmée / terminée, d'après `active` et les dates de validité. */
+  protected ruleState(rule: CommissionRule): RuleState {
+    if (rule.active) return 'current';
+    const now = Date.now();
+    if (new Date(rule.validFrom).getTime() > now && (!rule.validTo || new Date(rule.validTo).getTime() > now)) return 'scheduled';
+    return 'ended';
+  }
+
+  protected ruleLabel(rule: CommissionRule): string {
+    switch (rule.scope) {
+      case 'GLOBAL':
+        return 'Taux par défaut';
+      case 'CATEGORY':
+        return this.categoryOptions().find(c => c.code === rule.category)?.name ?? rule.category ?? 'Catégorie';
+      case 'ZONE':
+        return `Zone ${rule.zoneName ?? ''}`.trim();
+      default:
+        return 'Nouveaux chauffeurs';
+    }
+  }
+
+  protected ruleRate(rule: CommissionRule): string {
+    return String(Number(rule.rate)).replace('.', ',');
+  }
+
+  /** Le taux par défaut se modifie, il ne se termine pas ; seules les exceptions en vigueur ou programmées se terminent. */
+  protected canEnd(rule: CommissionRule): boolean {
+    return rule.scope !== 'GLOBAL' && this.ruleState(rule) !== 'ended';
+  }
+
+  protected openEnd(rule: CommissionRule): void {
+    this.openDialog({ kind: 'end', rule });
   }
 
   private loadOverview(): void {
@@ -178,7 +290,7 @@ export class TarificationPage implements OnInit {
   protected openAdd(): void {
     const data = this.overview();
     this.addScope.set('CATEGORY');
-    this.addCategory.set(data?.tariffs.categories[0]?.code ?? '');
+    this.addCategory.set(this.categoryOptions().find(c => c.active)?.code ?? this.categoryOptions()[0]?.code ?? '');
     this.addZone.set(this.zones()[0]?.id ?? '');
     this.addDays.set('30');
     this.addRate.set('');
@@ -212,8 +324,12 @@ export class TarificationPage implements OnInit {
     let reloadOverview = true;
     switch (dialog.kind) {
       case 'delete':
+        request = this.service.deleteCommissionRule(dialog.rule.id, reason);
+        done = 'Exception supprimée.';
+        break;
+      case 'end':
         request = this.service.endCommissionRule(dialog.rule.id, reason);
-        done = 'Exception terminée.';
+        done = 'Règle terminée.';
         break;
       case 'category':
         request = this.service.setCategoryActive(dialog.category.code, !dialog.category.active, reason);
@@ -256,6 +372,8 @@ export class TarificationPage implements OnInit {
         this.notice.set(done);
         this.error.set('');
         if (reloadOverview) this.loadOverview();
+        this.loadRules();
+        if (dialog.kind === 'category') this.service.categories().subscribe({ next: list => this.categories.set(list), error: () => {} });
         this.page.set(1);
         this.loadHistory();
       },
@@ -306,6 +424,9 @@ export class TarificationPage implements OnInit {
   private apiMessage(err: unknown): string {
     if (err instanceof HttpErrorResponse) {
       if (err.status === 0) return 'Impossible de joindre le serveur.';
+      if ((err.error as { code?: string } | null)?.code === 'DEFAULT_RATE_REQUIRED') {
+        return 'Le taux par défaut ne se supprime pas : modifiez-le dans « Taux par défaut ».';
+      }
       const message = (err.error as { message?: string | string[] } | null)?.message;
       if (Array.isArray(message) && message.length) return message.join(' ');
       if (typeof message === 'string' && message) return message;

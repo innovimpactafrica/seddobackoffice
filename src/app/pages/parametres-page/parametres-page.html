@@ -3,59 +3,182 @@
     <div>
       <span class="module-badge">Système & Préférences</span>
       <h1>Paramètres de la Plateforme</h1>
-      <p>Configuration générale de l'application, intégrations passerelles, devise et sécurité de l'infrastructure.</p>
-    </div>
-    <div class="header-actions">
-      <button class="btn-primary">Enregistrer les modifications</button>
+      <p>Réglages de la recherche de chauffeur, des courses, des paiements et des apps. Réservé aux administrateurs, chaque modification est tracée.</p>
     </div>
   </header>
 
-  <div class="settings-grid">
-    <section class="settings-card">
-      <h2>Informations Générales</h2>
-      <div class="form-group">
-        <label>Nom de la plateforme</label>
-        <input type="text" [value]="config.nomPlateforme" class="form-input" />
+  <section class="settings-card maps-card">
+    <div class="maps-head">
+      <div>
+        <h2>Clés Google Maps des applications</h2>
+        <p class="card-sub">Réservé aux administrateurs. Chaque changement est inscrit au journal d'audit (fin de clé seulement).</p>
       </div>
-      <div class="form-group">
-        <label>Devise principale</label>
-        <input type="text" [value]="config.devise" disabled class="form-input" />
-      </div>
-      <div class="form-group">
-        <label>Fuseau horaire</label>
-        <input type="text" [value]="config.fuseauHoraire" class="form-input" />
-      </div>
-    </section>
+      <button class="btn-primary" type="button" [disabled]="!changedPlatforms().length" (click)="openConfirm()">Enregistrer</button>
+    </div>
 
-    <section class="settings-card">
-      <h2>Sécurité & Authentification</h2>
-      <div class="form-group">
-        <label>Délai de validité du code OTP 2FA (secondes)</label>
-        <input type="number" [value]="config.delaiExpirationOtp" class="form-input" />
-      </div>
-      <div class="form-group">
-        <label>Seuil d'alerte solde compte OM/Wave (FCFA)</label>
-        <input type="number" [value]="config.seuilAlerteSoldeOm" class="form-input" />
-      </div>
-      <div class="toggle-row">
-        <div>
-          <strong>Mode Maintenance</strong>
-          <p>Désactive temporairement les réservations usagers</p>
+    @if (mapsError()) {
+      <div class="state-banner" role="alert">{{ mapsError() }} <button class="btn-link" type="button" (click)="loadMaps()">Réessayer</button></div>
+    }
+    @if (mapsNotice()) {
+      <div class="state-banner success" role="status">{{ mapsNotice() }}</div>
+    }
+
+    @if (mapsLoading() && !params()) {
+      <p class="card-sub">Chargement…</p>
+    } @else if (params(); as p) {
+      @for (pl of platforms; track pl.key) {
+        <div class="key-row">
+          <div class="key-label">
+            <strong>{{ pl.label }}</strong>
+            <span>{{ pl.hint }}</span>
+          </div>
+          <div class="key-value">
+            @if (editing()[pl.key]) {
+              <input class="form-input mono" type="text" autocomplete="off" spellcheck="false" placeholder="AIzaSy…" [attr.aria-label]="'Clé ' + pl.label" [value]="drafts()[pl.key] ?? ''" (input)="setDraft(pl.key, $any($event.target).value)" />
+            } @else if (isRemoved(pl.key)) {
+              <span class="status-pill status-off">Sera retirée</span>
+            } @else if (p.maps[pl.key]) {
+              <span class="mono">{{ masked(p.maps[pl.key]) }}</span>
+              <span class="status-pill status-on">Configurée</span>
+            } @else {
+              <span class="status-pill status-off">Non configurée</span>
+            }
+          </div>
+          <div class="key-actions">
+            @if (editing()[pl.key] || isRemoved(pl.key)) {
+              <button class="btn-link" type="button" (click)="cancel(pl.key)">Annuler</button>
+            } @else {
+              <button class="btn-link" type="button" (click)="edit(pl.key)">{{ p.maps[pl.key] ? 'Remplacer' : 'Ajouter' }}</button>
+              @if (p.maps[pl.key]) {
+                <button class="btn-link danger" type="button" (click)="remove(pl.key)">Retirer</button>
+              }
+            }
+          </div>
         </div>
-        <span class="status-pill status-off">Inactif</span>
-      </div>
-    </section>
+      }
+    }
+  </section>
 
-    <section class="settings-card">
-      <h2>Support & Coordonnées</h2>
-      <div class="form-group">
-        <label>Téléphone standard d'urgence</label>
-        <input type="text" [value]="config.contactSupport" class="form-input" />
-      </div>
-      <div class="form-group">
-        <label>Email assistance</label>
-        <input type="email" [value]="config.emailSupport" class="form-input" />
-      </div>
-    </section>
+  <div class="settings-toolbar">
+    <h2 class="settings-title">Paramètres globaux</h2>
+    <input class="form-input search" type="search" placeholder="Rechercher un paramètre…" aria-label="Rechercher un paramètre" [value]="search()" (input)="search.set($any($event.target).value)" />
   </div>
+  <p class="card-sub settings-intro">Chaque modification demande un motif et s'applique tout de suite, sauf mention « au redémarrage ».</p>
+
+  @if (settingsError()) {
+    <div class="state-banner" role="alert">{{ settingsError() }} <button class="btn-link" type="button" (click)="loadSettings()">Réessayer</button></div>
+  }
+  @if (settingsNotice()) {
+    <div class="state-banner success" role="status">{{ settingsNotice() }}</div>
+  }
+  @if (settingsLoading() && !settings().length) {
+    <p class="card-sub">Chargement des paramètres…</p>
+  }
+
+  @for (g of groups(); track g.name) {
+    <section class="settings-card">
+      <h2>{{ g.name }}</h2>
+      @for (s of g.items; track s.key) {
+        <div class="setting-row" [class.editing]="editingKey() === s.key">
+          <div class="setting-info">
+            <strong>{{ s.label }}</strong>
+            <p>{{ s.description }}</p>
+            <span class="setting-meta">{{ s.key }} · modifié le {{ s.updatedAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+          </div>
+          <div class="setting-value">
+            @if (editingKey() === s.key) {
+              @switch (kind(s.value)) {
+                @case ('boolean') {
+                  <select class="form-input" [attr.aria-label]="s.label" (change)="draft.set($any($event.target).value)">
+                    <option value="true" [selected]="draft() === 'true'">Oui</option>
+                    <option value="false" [selected]="draft() === 'false'">Non</option>
+                  </select>
+                }
+                @case ('map') {
+                  <div class="map-inputs">
+                    @for (e of mapEntries(s.value); track e[0]) {
+                      <label class="map-input">
+                        <span>{{ e[0] }}</span>
+                        <input class="form-input" type="text" inputmode="decimal" [value]="draftMap()[e[0]]" (input)="setDraftMap(e[0], $any($event.target).value)" />
+                      </label>
+                    }
+                  </div>
+                }
+                @default {
+                  <input class="form-input" type="text" [attr.inputmode]="kind(s.value) === 'text' ? null : 'decimal'" [attr.aria-label]="s.label" [value]="draft()" (input)="draft.set($any($event.target).value)" (keydown.enter)="reviewEdit(s)" />
+                }
+              }
+              @if (s.unit) { <span class="setting-unit">{{ s.unit }}</span> }
+            } @else {
+              @if (kind(s.value) === 'boolean') {
+                <span class="status-pill" [class.status-on]="s.value" [class.status-off]="!s.value">{{ s.value ? 'Oui' : 'Non' }}</span>
+              } @else {
+                <span class="setting-current">{{ format(s.value, s.unit) }}</span>
+              }
+            }
+          </div>
+          <div class="key-actions">
+            @if (editingKey() === s.key) {
+              <button class="btn-link" type="button" (click)="cancelEdit()">Annuler</button>
+              <button class="btn-link strong" type="button" (click)="reviewEdit(s)">Valider</button>
+            } @else {
+              <button class="btn-link" type="button" (click)="startEdit(s)">Modifier</button>
+            }
+          </div>
+          @if (editingKey() === s.key && editError()) {
+            <p class="edit-error" role="alert">{{ editError() }}</p>
+          }
+        </div>
+      }
+    </section>
+  } @empty {
+    @if (!settingsLoading() && !settingsError()) {
+      <p class="card-sub">Aucun paramètre ne correspond à la recherche.</p>
+    }
+  }
 </div>
+
+@if (pending(); as pd) {
+  <div class="modal-backdrop" (click)="closePending()">
+    <form class="modal" role="dialog" aria-modal="true" aria-labelledby="setting-title" (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); saveSetting()">
+      <h2 id="setting-title" class="modal-title">Modifier « {{ pd.setting.label }} » ?</h2>
+      <p class="modal-change">
+        <span class="old">{{ format(pd.setting.value, pd.setting.unit) }}</span>
+        <span aria-hidden="true">→</span>
+        <strong>{{ format(pd.value, pd.setting.unit) }}</strong>
+      </p>
+      <p class="card-sub">{{ pd.setting.description }}</p>
+      <label class="form-label" for="setting-reason">Motif (obligatoire)</label>
+      <input id="setting-reason" class="form-input" type="text" autocomplete="off" [value]="reason()" (input)="reason.set($any($event.target).value)" />
+      @if (dialogError()) {
+        <div class="state-banner" role="alert">{{ dialogError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-secondary" type="button" [disabled]="busy()" (click)="closePending()">Annuler</button>
+        <button class="btn-primary" type="submit" [disabled]="busy()">{{ busy() ? 'Enregistrement…' : 'Confirmer' }}</button>
+      </div>
+    </form>
+  </div>
+}
+
+@if (confirming()) {
+  <div class="modal-backdrop" (click)="closeConfirm()">
+    <form class="modal" role="dialog" aria-modal="true" aria-labelledby="maps-title" (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); save()">
+      <h2 id="maps-title" class="modal-title">Enregistrer les clés Google Maps ?</h2>
+      <ul class="modal-list">
+        @for (pl of changedPlatforms(); track pl.key) {
+          <li>{{ pl.label }} : {{ drafts()[pl.key] ? 'nouvelle clé ' + masked(drafts()[pl.key] ?? '') : 'clé retirée' }}</li>
+        }
+      </ul>
+      <label class="form-label" for="maps-reason">Motif (obligatoire)</label>
+      <input id="maps-reason" class="form-input" type="text" autocomplete="off" [value]="reason()" (input)="reason.set($any($event.target).value)" />
+      @if (dialogError()) {
+        <div class="state-banner" role="alert">{{ dialogError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-secondary" type="button" [disabled]="busy()" (click)="closeConfirm()">Annuler</button>
+        <button class="btn-primary" type="submit" [disabled]="busy()">{{ busy() ? 'Enregistrement…' : 'Confirmer' }}</button>
+      </div>
+    </form>
+  </div>
+}

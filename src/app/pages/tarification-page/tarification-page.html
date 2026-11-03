@@ -44,7 +44,7 @@
               <td>{{ e.rate }} %</td>
               <td>{{ e.period }}</td>
               <td class="trash-cell">
-                <button class="btn-trash" type="button" aria-label="Mettre fin à l'exception" (click)="openDelete(e)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+                <button class="btn-trash" type="button" aria-label="Supprimer l'exception" title="Supprimer l'exception" (click)="openDelete(e)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
               </td>
             </tr>
           } @empty {
@@ -116,8 +116,12 @@
           </p>
         }
         @case ('delete') {
-          <h2 id="dlg-title" class="modal-title">Mettre fin à l'exception ?</h2>
-          <p class="modal-sub">{{ d.rule.label }} · {{ d.rule.rate }} %</p>
+          <h2 id="dlg-title" class="modal-title">Supprimer l'exception ?</h2>
+          <p class="modal-sub">{{ d.rule.label }} · {{ d.rule.rate }} %. Fin de validité immédiate : les courses passées gardent leur taux.</p>
+        }
+        @case ('end') {
+          <h2 id="dlg-title" class="modal-title">Mettre fin à la règle ?</h2>
+          <p class="modal-sub">{{ ruleLabel(d.rule) }} · {{ ruleRate(d.rule) }} %. Les nouvelles commandes reprennent le taux par défaut ; les courses passées gardent leur taux.</p>
         }
         @case ('category') {
           <h2 id="dlg-title" class="modal-title">{{ d.category.active ? 'Désactiver' : 'Activer' }} {{ d.category.name }} ?</h2>
@@ -137,8 +141,8 @@
           @if (addScope() === 'CATEGORY') {
             <label class="form-label" for="add-category">Catégorie</label>
             <select id="add-category" class="form-input" (change)="addCategory.set($any($event.target).value)">
-              @for (c of overview()?.tariffs?.categories ?? []; track c.code) {
-                <option [value]="c.code" [selected]="addCategory() === c.code">{{ c.name }}</option>
+              @for (c of categoryOptions(); track c.code) {
+                <option [value]="c.code" [selected]="addCategory() === c.code">{{ c.name }}@if (c.seats) { · {{ c.seats }} places }@if (!c.active) { (désactivée) }</option>
               }
             </select>
           } @else if (addScope() === 'ZONE') {
@@ -182,6 +186,60 @@
     </form>
   </div>
 }
+
+<h2 class="section-title">Règles de commission</h2>
+<div class="toolbar">
+  <div class="rule-tabs" role="tablist" aria-label="Statut des règles">
+    @for (f of ruleFilters; track f.code) {
+      <button type="button" role="tab" class="rule-tab" [class.active]="ruleFilter() === f.code" [attr.aria-selected]="ruleFilter() === f.code" (click)="ruleFilter.set(f.code)">
+        {{ f.label }} <span class="rule-count">{{ ruleCounts()[f.code] }}</span>
+      </button>
+    }
+  </div>
+</div>
+
+@if (rulesError()) {
+  <div class="state-banner" role="alert">{{ rulesError() }} <button class="th-action inline" type="button" (click)="loadRules()">Réessayer</button></div>
+}
+
+<div class="table-card rules-card">
+  <div class="rules-scroll">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Portée</th>
+          <th class="num">Taux</th>
+          <th>Du</th>
+          <th>Au</th>
+          <th>Motif</th>
+          <th>Statut</th>
+          <th><span class="sr-only">Action</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of visibleRules(); track r.id) {
+          <tr>
+            <td>{{ ruleLabel(r) }}</td>
+            <td class="num">{{ ruleRate(r) }} %</td>
+            <td class="nowrap">{{ r.validFrom | date: 'dd/MM/yyyy HH:mm' }}</td>
+            <td class="nowrap">{{ r.validTo ? (r.validTo | date: 'dd/MM/yyyy HH:mm') : '—' }}</td>
+            <td>{{ r.reason || '—' }}</td>
+            <td><span [class]="'pill ' + ruleStates[ruleState(r)].pill">{{ ruleStates[ruleState(r)].label }}</span></td>
+            <td class="trash-cell">
+              @if (canEnd(r)) {
+                <button class="th-action" type="button" (click)="openEnd(r)">Terminer</button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="7">{{ rulesLoading() ? 'Chargement…' : 'Aucune règle.' }}</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<app-pricing-rules-panel [zones]="zones()" [categories]="categoryOptions()" (changed)="onPricingChanged()" />
 
 <h2 class="section-title">Historique des modifications</h2>
 <div class="toolbar">
