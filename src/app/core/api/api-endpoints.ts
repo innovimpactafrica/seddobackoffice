@@ -114,6 +114,10 @@ export const API_ENDPOINTS = {
     /** Clés Google Maps des apps (Android, iOS, web). */
     appParams: '/v1/admin/app-params'
   },
+  app: {
+    /** Public (sans connexion) : clés Google Maps des apps, dont celle du web utilisée par ce backoffice. */
+    params: '/v1/app/params'
+  },
   auditLogs: {
     list: '/v1/admin/audit-logs',
     export: '/v1/admin/audit-logs/export.csv',

@@ -3,7 +3,7 @@ import { DatePipe, DecimalPipe, NgTemplateOutlet, isPlatformBrowser } from '@ang
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { Observable, tap } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { GoogleMapsLoader, mapsErrorMessage } from '../../core/maps/google-maps-loader';
 import { AuthService } from '../../auth/auth.service';
 import {
   ContourInput,
@@ -139,6 +139,7 @@ export class ZonesPage implements AfterViewInit, OnDestroy {
   private readonly service = inject(ZonesService);
   private readonly auth = inject(AuthService);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly mapsLoader = inject(GoogleMapsLoader);
 
   @ViewChild('mapEl', { static: true }) private mapEl?: ElementRef<HTMLDivElement>;
 
@@ -439,21 +440,11 @@ export class ZonesPage implements AfterViewInit, OnDestroy {
       this.mapReady.set(false);
       this.mapError.set('Carte Google Maps indisponible (clé refusée). Le cercle et l’import de fichier restent utilisables.');
     };
-    if (win.google?.maps) return this.renderMap();
-
-    const scriptId = 'google-maps-sdk';
-    const existing = document.getElementById(scriptId) as HTMLScriptElement | null;
-    if (existing) {
-      existing.addEventListener('load', () => this.renderMap());
-      return;
-    }
-    const script = document.createElement('script');
-    script.id = scriptId;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${environment.googleMapsApiKey}&libraries=geometry`;
-    script.async = true;
-    script.onload = () => this.renderMap();
-    script.onerror = () => this.mapError.set('Carte Google Maps injoignable. Le cercle et l’import de fichier restent utilisables.');
-    document.head.appendChild(script);
+    // Clé lue dans Paramètres › Clés Google Maps (aucune clé en dur).
+    this.mapsLoader.load().then(
+      () => this.renderMap(),
+      err => this.mapError.set(`${mapsErrorMessage(err)} Le cercle et l’import de fichier restent utilisables.`)
+    );
   }
 
   private renderMap(): void {

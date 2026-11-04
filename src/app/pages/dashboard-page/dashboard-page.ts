@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { environment } from '../../../environments/environment';
+import { GoogleMapsLoader, mapsErrorMessage } from '../../core/maps/google-maps-loader';
 import { DashboardService, DashboardSummary, LedgerBalances, LiveMap } from './dashboard.service';
 import { ActiveZone, toPaths, ZonesService } from '../zones-page/zones.service';
 
@@ -81,6 +81,7 @@ export class DashboardPage implements AfterViewInit, OnDestroy {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly service = inject(DashboardService);
   private readonly zonesService = inject(ZonesService);
+  private readonly mapsLoader = inject(GoogleMapsLoader);
 
   @ViewChild('gmapContainer') private gmapContainer?: ElementRef<HTMLDivElement>;
 
@@ -259,25 +260,14 @@ export class DashboardPage implements AfterViewInit, OnDestroy {
       this.gmapLoaded.set(false);
     };
 
-    if (win.google && win.google.maps) {
-      this.renderGoogleMaps();
-      return;
-    }
-
-    const scriptId = 'google-maps-sdk';
-    const existingScript = document.getElementById(scriptId) as HTMLScriptElement | null;
-    if (!existingScript) {
-      const script = document.createElement('script');
-      script.id = scriptId;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${environment.googleMapsApiKey}&libraries=geometry`;
-      script.async = true;
-      script.onload = () => this.renderGoogleMaps();
-      // En cas d'erreur réseau, le fallback stylisé Dakar prend le relais
-      script.onerror = () => this.gmapLoaded.set(false);
-      document.head.appendChild(script);
-    } else {
-      existingScript.addEventListener('load', () => this.renderGoogleMaps());
-    }
+    // Clé lue dans Paramètres › Clés Google Maps ; sans clé ou hors ligne, le fallback stylisé Dakar prend le relais.
+    this.mapsLoader.load().then(
+      () => this.renderGoogleMaps(),
+      err => {
+        console.warn('Google Maps non chargé :', mapsErrorMessage(err));
+        this.gmapLoaded.set(false);
+      }
+    );
   }
 
   private renderGoogleMaps(): void {
