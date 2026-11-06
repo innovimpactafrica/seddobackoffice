@@ -166,6 +166,15 @@ export class ParametresPage implements OnInit {
     this.pending.set({ setting, value });
   }
 
+  /** Interrupteur Oui/Non : demande directement le motif pour la valeur inverse. */
+  protected toggleBoolean(setting: Setting): void {
+    this.editingKey.set(null);
+    this.settingsNotice.set('');
+    this.reason.set('');
+    this.dialogError.set('');
+    this.pending.set({ setting, value: !setting.value });
+  }
+
   /** Saisie convertie dans le type de la valeur actuelle, ou null si elle est invalide. */
   private parseDraft(current: SettingValue): SettingValue | null {
     const toNumber = (text: string): number | null => {

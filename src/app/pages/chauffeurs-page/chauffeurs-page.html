@@ -7,16 +7,12 @@
   <nav class="page-tabs" aria-label="Sections chauffeurs">
     <button type="button" [class.active]="tab() === 'drivers'" (click)="setTab('drivers')">Chauffeurs</button>
     <button type="button" [class.active]="tab() === 'selfies'" (click)="setTab('selfies')">Selfies à vérifier</button>
-    <button type="button" [class.active]="tab() === 'wallets'" (click)="setTab('wallets')">Portefeuilles</button>
     <button type="button" [class.active]="tab() === 'types'" (click)="setTab('types')">Types de pièces</button>
   </nav>
 
   @switch (tab()) {
     @case ('selfies') {
       <app-selfies-panel [canReview]="canAct()" (openDriver)="openDriver($event)" />
-    }
-    @case ('wallets') {
-      <app-wallets-panel (openDriver)="openDriver($event, 'wallet')" />
     }
     @case ('types') {
       <app-document-types-panel [canEdit]="isAdmin()" />

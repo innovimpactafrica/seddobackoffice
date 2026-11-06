@@ -3,7 +3,7 @@ import { Component, computed, inject, OnDestroy, OnInit, output, signal } from '
 import { DatePipe } from '@angular/common';
 import { driverName, DriversService, WalletFilter, WalletListItem } from './drivers.service';
 
-/** Onglet « Portefeuilles » : soldes de tous les chauffeurs ; un clic ouvre l'onglet Portefeuille de la fiche. */
+/** Liste des portefeuilles (menu Portefeuilles) ; un clic ouvre la fiche portefeuille du chauffeur. */
 @Component({
   selector: 'app-wallets-panel',
   imports: [DatePipe],
@@ -13,7 +13,7 @@ import { driverName, DriversService, WalletFilter, WalletListItem } from './driv
 export class WalletsPanel implements OnInit, OnDestroy {
   private readonly service = inject(DriversService);
 
-  readonly openDriver = output<string>();
+  readonly openWallet = output<WalletListItem>();
 
   protected readonly wallets = signal<WalletListItem[]>([]);
   protected readonly loading = signal(false);

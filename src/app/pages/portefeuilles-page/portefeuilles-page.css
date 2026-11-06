@@ -1,0 +1,60 @@
+.pf-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pf-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pf-title {
+  margin: 0 0 3px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.pf-sub {
+  margin: 0;
+  font-size: 13px;
+  color: #7a736c;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.pf-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #7a736c;
+  cursor: pointer;
+}
+
+.pf-back:hover {
+  color: #191613;
+}
+
+.pf-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ff5a00;
+  text-decoration: none;
+}
+
+.pf-link:hover {
+  text-decoration: underline;
+}

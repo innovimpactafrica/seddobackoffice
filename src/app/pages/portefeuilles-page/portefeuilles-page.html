@@ -1,0 +1,29 @@
+<div class="pf-wrap">
+  @if (selected(); as s) {
+    <button class="pf-back" type="button" (click)="back()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+      Tous les portefeuilles
+    </button>
+
+    <div class="pf-head">
+      <div>
+        <h1 class="pf-title">{{ s.name }}</h1>
+        @if (s.phone) { <p class="pf-sub mono">{{ s.phone }}</p> }
+      </div>
+      @if (canOpenDriver()) {
+        <a class="pf-link" routerLink="/chauffeurs" [queryParams]="{ id: s.id }">Voir la fiche chauffeur</a>
+      }
+    </div>
+
+    <app-driver-wallet [driverId]="s.id" [canManage]="canManage()" />
+  } @else {
+    <div class="pf-head">
+      <div>
+        <h1 class="pf-title">Portefeuilles</h1>
+        <p class="pf-sub">Soldes des chauffeurs, réserve minimale et blocage des courses en espèces.</p>
+      </div>
+    </div>
+
+    <app-wallets-panel (openWallet)="open($event)" />
+  }
+</div>

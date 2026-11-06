@@ -72,6 +72,7 @@ export class App {
     {
       title: 'FINANCE',
       items: [
+        { label: 'Portefeuilles',        icon: '', path: '/portefeuilles' },
         { label: 'Paiements',            icon: '', path: '/paiements' },
         { label: 'Versements',           icon: '', path: '/versements',    badge: 3 },
         { label: 'Rapprochement',        icon: '', path: '/rapprochement', badge: 1 }

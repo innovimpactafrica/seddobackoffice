@@ -86,14 +86,22 @@
             <span class="setting-meta">{{ s.key }} · modifié le {{ s.updatedAt | date: 'dd/MM/yyyy HH:mm' }}</span>
           </div>
           <div class="setting-value">
-            @if (editingKey() === s.key) {
+            @if (kind(s.value) === 'boolean') {
+              <button
+                class="toggle"
+                type="button"
+                role="switch"
+                [attr.aria-checked]="!!s.value"
+                [attr.aria-label]="s.label"
+                [class.on]="s.value"
+                [class.pending]="pending()?.setting?.key === s.key"
+                (click)="toggleBoolean(s)"
+              >
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                <span class="toggle-text">{{ s.value ? 'Oui' : 'Non' }}</span>
+              </button>
+            } @else if (editingKey() === s.key) {
               @switch (kind(s.value)) {
-                @case ('boolean') {
-                  <select class="form-input" [attr.aria-label]="s.label" (change)="draft.set($any($event.target).value)">
-                    <option value="true" [selected]="draft() === 'true'">Oui</option>
-                    <option value="false" [selected]="draft() === 'false'">Non</option>
-                  </select>
-                }
                 @case ('map') {
                   <div class="map-inputs">
                     @for (e of mapEntries(s.value); track e[0]) {
@@ -110,15 +118,13 @@
               }
               @if (s.unit) { <span class="setting-unit">{{ s.unit }}</span> }
             } @else {
-              @if (kind(s.value) === 'boolean') {
-                <span class="status-pill" [class.status-on]="s.value" [class.status-off]="!s.value">{{ s.value ? 'Oui' : 'Non' }}</span>
-              } @else {
-                <span class="setting-current">{{ format(s.value, s.unit) }}</span>
-              }
+              <span class="setting-current">{{ format(s.value, s.unit) }}</span>
             }
           </div>
           <div class="key-actions">
-            @if (editingKey() === s.key) {
+            @if (kind(s.value) === 'boolean') {
+              <!-- L'interrupteur suffit : pas de bouton Modifier. -->
+            } @else if (editingKey() === s.key) {
               <button class="btn-link" type="button" (click)="cancelEdit()">Annuler</button>
               <button class="btn-link strong" type="button" (click)="reviewEdit(s)">Valider</button>
             } @else {

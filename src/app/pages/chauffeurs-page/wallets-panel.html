@@ -30,7 +30,7 @@
     </thead>
     <tbody>
       @for (w of wallets(); track w.driverId) {
-        <tr class="w-row" tabindex="0" (click)="openDriver.emit(w.driverId)" (keydown.enter)="openDriver.emit(w.driverId)">
+        <tr class="w-row" tabindex="0" (click)="openWallet.emit(w)" (keydown.enter)="openWallet.emit(w)">
           <td>
             <strong [class.unnamed]="!w.firstName && !w.lastName">{{ name(w) }}</strong>
             <div class="sub-line mono">{{ w.phone }}</div>

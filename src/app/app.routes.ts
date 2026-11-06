@@ -57,6 +57,13 @@ export const routes: Routes = [
       import('./pages/zones-page/zones-page').then(({ ZonesPage }) => ZonesPage)
   },
   {
+    path: 'portefeuilles',
+    canActivate: [authGuard],
+    data: { title: 'Portefeuilles' },
+    loadComponent: () =>
+      import('./pages/portefeuilles-page/portefeuilles-page').then(({ PortefeuillesPage }) => PortefeuillesPage)
+  },
+  {
     path: 'paiements',
     canActivate: [authGuard],
     data: { title: 'Paiements' },

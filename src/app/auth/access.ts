@@ -10,11 +10,12 @@ export const ROUTE_ROLES: Record<string, readonly string[]> = {
   dashboard: ALL,
   courses: ['ADMIN', 'OPS', 'FINANCE', 'SUPPORT'],
   rapports: ['ADMIN', 'FINANCE', 'DIRECTION'],
-  // La Finance y gère les portefeuilles (ajustements, blocage des espèces).
-  chauffeurs: ['ADMIN', 'OPS', 'FINANCE', 'SUPPORT'],
+  chauffeurs: ['ADMIN', 'OPS', 'SUPPORT'],
   clients: ['ADMIN', 'OPS', 'SUPPORT'],
   // Consultation et simulation ouvertes à tous les rôles opérationnels (spécification des zones).
   zones: ['ADMIN', 'OPS', 'FINANCE', 'SUPPORT'],
+  // Liste : Finance et Ops ; fiche : ajustements par la Finance, blocage des espèces par le Support.
+  portefeuilles: ['ADMIN', 'FINANCE', 'OPS', 'SUPPORT'],
   paiements: ['ADMIN', 'FINANCE'],
   versements: ['ADMIN', 'FINANCE'],
   rapprochement: ['ADMIN', 'FINANCE'],
