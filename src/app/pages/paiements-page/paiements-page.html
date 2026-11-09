@@ -4,92 +4,233 @@
     <p class="pay-sub">Chaque appel à Orange : encaissements clients, remboursements, versements chauffeurs. Toute notification est reconfirmée par un appel de statut.</p>
   </header>
 
-  <div class="toolbar">
-    <div class="search-wrap">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-      <input type="search" class="search-input" placeholder="Réf. Orange, n° de course, numéro…" aria-label="Rechercher une transaction" (input)="onSearch($any($event.target).value)" />
-    </div>
-    <select class="sel" aria-label="Type" (change)="setType($any($event.target).value)">
-      <option value="">Type : tous</option>
-      @for (t of types; track t.code) {
-        <option [value]="t.code">{{ t.label }}</option>
-      }
-    </select>
-    <select class="sel" aria-label="Statut" (change)="setStatus($any($event.target).value)">
-      <option value="">Statut : tous</option>
-      @for (s of statuses; track s.code) {
-        <option [value]="s.code">{{ s.label }}</option>
-      }
-    </select>
-    <select class="sel" aria-label="Période" (change)="setPeriod($any($event.target).value)">
-      @for (p of periods; track p.days) {
-        <option [value]="p.days" [selected]="p.days === periodDays()">{{ p.label }}</option>
-      }
-    </select>
-    <span class="period-label">
-      @if (periodDays() === 1) {
-        {{ range().to | date: 'd MMM y' }}
-      } @else {
-        {{ range().from | date: 'd MMM' }} – {{ range().to | date: 'd MMM y' }}
-      }
-    </span>
-  </div>
-
-  <div class="summary-row">
-    <span>Solde net de la sélection : <strong>{{ netBalance() | number }} F</strong></span>
-    <button class="btn-export" type="button" [disabled]="!filtered().length" (click)="exportCsv()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-      Exporter
+  <nav class="tabs" aria-label="Sections paiements">
+    <button type="button" [class.active]="tab() === 'transactions'" (click)="setTab('transactions')">Transactions</button>
+    <button type="button" [class.active]="tab() === 'refunds'" (click)="setTab('refunds')">
+      Demandes de remboursement
+      @if (pendingCount()) { <span class="badge">{{ pendingCount() }}</span> }
     </button>
-  </div>
+  </nav>
 
-  <div class="table-card">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Réf. Orange</th>
-          <th>Type</th>
-          <th>Course</th>
-          <th>Numéro</th>
-          <th class="num">Montant</th>
-          <th>Statut</th>
-          <th>Date</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (t of rows(); track t.orderId) {
-          <tr>
-            <td class="ref">{{ t.orderId }}</td>
-            <td>{{ typeLabels[t.type] }} <span class="code">{{ t.type }}</span></td>
-            <td>{{ t.rideRef }}</td>
-            <td class="nowrap">{{ t.msisdn }}</td>
-            <td class="num nowrap">{{ t.amount | number }} F</td>
-            <td><span class="pill" [class]="'pill ' + statusInfo(t.status).css">{{ statusInfo(t.status).label }}</span></td>
-            <td class="nowrap">{{ t.createdAt | date: 'd MMM HH:mm' }}</td>
-          </tr>
-        } @empty {
-          <tr><td colspan="7" class="empty">Aucune transaction pour cette sélection.</td></tr>
-        }
-      </tbody>
-    </table>
+  @if (notice()) { <div class="banner success" role="status">{{ notice() }}</div> }
 
-    <div class="pagination">
-      <span>{{ rangeLabel() }}</span>
-      <select class="pag-sel" aria-label="Lignes par page" (change)="setPageSize($any($event.target).value)">
-        @for (s of pageSizes; track s) {
-          <option [value]="s" [selected]="s === pageSize()">{{ s }}</option>
+  @if (tab() === 'transactions') {
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+        <input type="search" class="search-input" placeholder="Course, commande, réf. Orange…" aria-label="Rechercher une transaction" [value]="search()" (input)="onSearch($any($event.target).value)" />
+      </div>
+      <select class="sel" aria-label="Type" (change)="setType($any($event.target).value)">
+        <option value="">Type : tous</option>
+        @for (t of types; track t.code) {
+          <option [value]="t.code" [selected]="type() === t.code">{{ t.label }}</option>
         }
       </select>
-      <span>par page</span>
-      <div class="pag-pages">
-        <button class="pag-btn" type="button" aria-label="Première page" [disabled]="currentPage() === 1" (click)="goTo(1)">«</button>
-        <button class="pag-btn" type="button" aria-label="Page précédente" [disabled]="currentPage() === 1" (click)="goTo(currentPage() - 1)">‹</button>
-        @for (p of pages(); track p) {
-          <button class="pag-btn" type="button" [class.active]="p === currentPage()" [attr.aria-current]="p === currentPage() ? 'page' : null" (click)="goTo(p)">{{ p }}</button>
+      <select class="sel" aria-label="Statut" (change)="setStatus($any($event.target).value)">
+        <option value="">Statut : tous</option>
+        @for (s of statuses; track s.code) {
+          <option [value]="s.code" [selected]="status() === s.code">{{ s.label }}</option>
         }
-        <button class="pag-btn" type="button" aria-label="Page suivante" [disabled]="currentPage() === totalPages()" (click)="goTo(currentPage() + 1)">›</button>
-        <button class="pag-btn" type="button" aria-label="Dernière page" [disabled]="currentPage() === totalPages()" (click)="goTo(totalPages())">»</button>
+      </select>
+      <button class="btn-export" type="button" [disabled]="!txTotal() || exporting()" (click)="exportCsv()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+        {{ exporting() ? 'Export…' : 'Exporter' }}
+      </button>
+    </div>
+
+    @if (txError()) {
+      <div class="banner" role="alert">{{ txError() }} <button class="btn-link" type="button" (click)="loadTransactions()">Réessayer</button></div>
+    }
+
+    <div class="table-card" [class.stale]="txLoading()">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Course</th>
+            <th>Numéro</th>
+            <th class="num">Montant</th>
+            <th>Statut</th>
+            <th>Réf. Orange</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (t of txs(); track t.id) {
+            <tr>
+              <td class="nowrap">{{ t.createdAt | date: 'd MMM HH:mm' }}</td>
+              <td class="nowrap">{{ typeLabel(t.type) }}</td>
+              <td>
+                <strong class="nowrap">{{ t.rideRef || '—' }}</strong>
+                <div class="sub mono">{{ t.orderId }}</div>
+              </td>
+              <td class="nowrap mono">{{ t.msisdn || '—' }}</td>
+              <td class="num nowrap"><strong>{{ money(t.amount) }}</strong></td>
+              <td>
+                <span [class]="statusTone(t.status)">{{ statusLabel(t.status) }}</span>
+                @if (t.held) { <span class="pill pill-blue">Retenu</span> }
+                @if (t.failureReason && t.status !== 'SUCCESS') {
+                  <div class="sub" [attr.title]="t.failureReason">{{ failureLabel(t.failureReason) }}</div>
+                }
+                @if (t.type !== 'CHARGE' && t.attempts) {
+                  <div class="sub">{{ t.attempts }} tentative{{ t.attempts > 1 ? 's' : '' }}</div>
+                }
+              </td>
+              <td>
+                @if (t.providerRef) {
+                  <span class="mono">{{ t.providerRef }}</span>
+                  @if (t.confirmedAt) { <div class="sub">confirmé {{ t.confirmedAt | date: 'd MMM HH:mm' }}</div> }
+                } @else {
+                  <span class="muted">—</span>
+                }
+              </td>
+              <td class="actions">
+                @if (canRecheck(t)) {
+                  <button class="btn-row" type="button" [disabled]="rechecking() === t.id" title="Interroger Orange et appliquer le statut réel" (click)="recheck(t)">
+                    {{ rechecking() === t.id ? 'Vérification…' : 'Revérifier' }}
+                  </button>
+                }
+                @if (canRetry(t)) {
+                  <button class="btn-row" type="button" title="Renvoyer le dépôt Orange Money au client" (click)="openRetry(t)">Relancer</button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="8" class="empty">{{ txLoading() ? 'Chargement…' : 'Aucune transaction pour cette sélection.' }}</td></tr>
+          }
+        </tbody>
+      </table>
+
+      <div class="pagination">
+        <span>{{ txRange() }}</span>
+        <select class="pag-sel" aria-label="Lignes par page" (change)="setPageSize($any($event.target).value)">
+          @for (s of pageSizes; track s) {
+            <option [value]="s" [selected]="s === txPageSize()">{{ s }}</option>
+          }
+        </select>
+        <span>par page</span>
+        <div class="pag-pages">
+          <button class="pag-btn" type="button" aria-label="Première page" [disabled]="txPage() === 1" (click)="goToTx(1)">«</button>
+          <button class="pag-btn" type="button" aria-label="Page précédente" [disabled]="txPage() === 1" (click)="goToTx(txPage() - 1)">‹</button>
+          <span class="pag-info">Page {{ txPage() }} / {{ txPages() }}</span>
+          <button class="pag-btn" type="button" aria-label="Page suivante" [disabled]="txPage() === txPages()" (click)="goToTx(txPage() + 1)">›</button>
+          <button class="pag-btn" type="button" aria-label="Dernière page" [disabled]="txPage() === txPages()" (click)="goToTx(txPages())">»</button>
+        </div>
       </div>
     </div>
-  </div>
+  } @else {
+    <p class="pay-sub">Les remboursements au-delà du seuil demandés par le Support attendent la validation de la Finance. Une fois validée, le dépôt Orange Money est ordonné.</p>
+
+    <div class="filter-tabs">
+      @for (f of refundFilters; track f.code) {
+        <button type="button" class="filter-tab" [class.active]="refundStatus() === f.code" (click)="setRefundStatus(f.code)">{{ f.label }}</button>
+      }
+    </div>
+
+    @if (refundError()) {
+      <div class="banner" role="alert">{{ refundError() }} <button class="btn-link" type="button" (click)="loadRefunds()">Réessayer</button></div>
+    }
+
+    <div class="table-card" [class.stale]="refundLoading()">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Demandée le</th>
+            <th>Course</th>
+            <th class="num">Montant</th>
+            <th>Motif</th>
+            <th>Demandée par</th>
+            <th>Statut</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of refunds(); track r.id) {
+            <tr>
+              <td class="nowrap">{{ r.createdAt | date: 'd MMM y HH:mm' }}</td>
+              <td><strong>{{ r.rideRef }}</strong></td>
+              <td class="num nowrap"><strong>{{ money(r.amount) }}</strong></td>
+              <td>{{ r.reason }}</td>
+              <td>{{ r.requestedBy }}</td>
+              <td>
+                <span [class]="refundTone(r.status)">{{ refundLabel(r.status) }}</span>
+                @if (r.decidedAt) { <div class="sub">le {{ r.decidedAt | date: 'd MMM HH:mm' }}</div> }
+              </td>
+              <td class="actions">
+                @if (r.status === 'PENDING') {
+                  <button class="btn-primary" type="button" (click)="openDecision('approve', r)">Valider</button>
+                  <button class="btn-row" type="button" (click)="openDecision('reject', r)">Refuser</button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="empty">{{ refundLoading() ? 'Chargement…' : refundStatus() === 'PENDING' ? 'Aucune demande à valider.' : 'Aucune demande.' }}</td></tr>
+          }
+        </tbody>
+      </table>
+
+      <div class="pagination">
+        <span>{{ refundRange() }}</span>
+        @if (refundPages() > 1) {
+          <div class="pag-pages">
+            <button class="pag-btn" type="button" aria-label="Page précédente" [disabled]="refundPage() === 1" (click)="goToRefund(refundPage() - 1)">‹</button>
+            <span class="pag-info">Page {{ refundPage() }} / {{ refundPages() }}</span>
+            <button class="pag-btn" type="button" aria-label="Page suivante" [disabled]="refundPage() === refundPages()" (click)="goToRefund(refundPage() + 1)">›</button>
+          </div>
+        }
+      </div>
+    </div>
+  }
 </div>
+
+@if (decision(); as d) {
+  <div class="modal-backdrop" (click)="closeDecision()">
+    <form class="modal" role="dialog" aria-modal="true" aria-labelledby="dec-title" (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); confirmDecision()">
+      @if (d.kind === 'retry') {
+        <h2 id="dec-title" class="modal-title">Relancer le remboursement</h2>
+        <dl class="modal-facts">
+          <div><dt>Course</dt><dd>{{ d.tx.rideRef || '—' }}</dd></div>
+          <div><dt>Montant</dt><dd>{{ money(d.tx.amount) }}</dd></div>
+          <div><dt>Numéro</dt><dd>{{ d.tx.msisdn || '—' }}</dd></div>
+          <div><dt>Tentatives</dt><dd>{{ d.tx.attempts }}</dd></div>
+        </dl>
+        <p class="modal-sub">
+          Un nouveau dépôt de {{ money(d.tx.amount) }} est envoyé au client par Orange Money@if (d.tx.failureReason) { (dernier échec : {{ failureLabel(d.tx.failureReason) }})}.
+        </p>
+      } @else {
+        <h2 id="dec-title" class="modal-title">{{ d.kind === 'approve' ? 'Valider le remboursement' : 'Refuser le remboursement' }}</h2>
+        <dl class="modal-facts">
+          <div><dt>Course</dt><dd>{{ d.request.rideRef }}</dd></div>
+          <div><dt>Montant</dt><dd>{{ money(d.request.amount) }}</dd></div>
+          <div><dt>Demandée par</dt><dd>{{ d.request.requestedBy }}</dd></div>
+          <div><dt>Motif de la demande</dt><dd>{{ d.request.reason }}</dd></div>
+        </dl>
+        <p class="modal-sub">
+          @if (d.kind === 'approve') {
+            {{ money(d.request.amount) }} seront renvoyés au client par Orange Money.
+          } @else {
+            Le client ne sera pas remboursé.
+          }
+        </p>
+      }
+      <label class="form-label" for="dec-reason">Motif (obligatoire)</label>
+      <input id="dec-reason" class="form-input" type="text" autocomplete="off" [value]="reason()" (input)="reason.set($any($event.target).value)" />
+      @if (dialogError()) { <div class="banner" role="alert">{{ dialogError() }}</div> }
+      <div class="modal-actions">
+        <button class="btn-secondary" type="button" [disabled]="busy()" (click)="closeDecision()">Annuler</button>
+        <button [class]="d.kind === 'reject' ? 'btn-danger' : 'btn-primary'" type="submit" [disabled]="busy()">
+          @if (busy()) {
+            En cours…
+          } @else if (d.kind === 'retry') {
+            Relancer
+          } @else if (d.kind === 'approve') {
+            Valider {{ money(d.request.amount) }}
+          } @else {
+            Refuser la demande
+          }
+        </button>
+      </div>
+    </form>
+  </div>
+}

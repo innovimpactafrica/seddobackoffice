@@ -114,6 +114,31 @@ export const API_ENDPOINTS = {
     /** Clés Google Maps des apps (Android, iOS, web). */
     appParams: '/v1/admin/app-params'
   },
+  payments: {
+    /** Transactions Orange Money (paginé, ?q&type=CHARGE|REFUND|PAYOUT&status=PENDING|SUCCESS|FAILED|EXPIRED). */
+    transactions: '/v1/admin/finance/transactions',
+    recheck: (id: string) => `/v1/admin/finance/transactions/${id}/recheck`,
+    /** Relance d'un dépôt en échec (remboursement ou versement) ; bulkRetry : plusieurs à la fois ({ids, reason}). */
+    retry: (id: string) => `/v1/admin/finance/transactions/${id}/retry`,
+    bulkRetry: '/v1/admin/finance/transactions/retry',
+    hold: (id: string) => `/v1/admin/finance/transactions/${id}/hold`,
+    release: (id: string) => `/v1/admin/finance/transactions/${id}/release`,
+    /** Changements de numéro de versement à valider (paginé, ?q&status=PENDING|APPROVED|REJECTED). */
+    payoutMsisdnRequests: '/v1/admin/finance/payout-msisdn-requests',
+    approvePayoutMsisdn: (id: string) => `/v1/admin/finance/payout-msisdn-requests/${id}/approve`,
+    rejectPayoutMsisdn: (id: string) => `/v1/admin/finance/payout-msisdn-requests/${id}/reject`,
+    /** Demandes de remboursement au-delà du seuil (paginé, ?q&status=PENDING|APPROVED|REJECTED). */
+    refundRequests: '/v1/admin/finance/refund-requests',
+    approveRefund: (id: string) => `/v1/admin/finance/refund-requests/${id}/approve`,
+    rejectRefund: (id: string) => `/v1/admin/finance/refund-requests/${id}/reject`
+  },
+  reconciliation: {
+    /** GET : relevés importés (paginé) ; POST multipart `file` : import CSV et rapprochement automatique. */
+    statements: '/v1/admin/finance/statements',
+    statement: (id: string) => `/v1/admin/finance/statements/${id}`,
+    explainLine: (id: string) => `/v1/admin/finance/statement-lines/${id}/explain`,
+    refundLine: (id: string) => `/v1/admin/finance/statement-lines/${id}/refund`
+  },
   app: {
     /** Public (sans connexion) : clés Google Maps des apps, dont celle du web utilisée par ce backoffice. */
     params: '/v1/app/params'

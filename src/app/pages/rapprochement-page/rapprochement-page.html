@@ -1,113 +1,269 @@
-<div class="page-head">
-  <div>
-    <h1 class="page-title">Rapprochement</h1>
-    <p class="page-sub">Relevé du compte marchand Orange Money comparé chaque jour au grand livre Seddo</p>
-  </div>
-  <button class="btn-soft" type="button">Importer un relevé</button>
-</div>
+<input #fileInput type="file" accept=".csv,text/csv" hidden (change)="onFile($event)" />
 
-<section class="kpi-grid">
-  @for (k of kpis; track k.label) {
-    <div class="kpi-card">
-      <span class="kpi-label">{{ k.label }}</span>
-      <strong class="kpi-val">{{ k.valeur }}</strong>
-      <span class="kpi-sub" [class.red]="k.red">{{ k.sub }}</span>
+@if (selectedId()) {
+  <!-- ─── Détail d'un relevé ─── -->
+  <button class="back" type="button" (click)="back()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+    Tous les relevés
+  </button>
+
+  @if (detail(); as d) {
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">{{ d.statement.filename }}</h1>
+        <p class="page-sub">
+          Opérations du
+          @if (samePeriodDay(d.statement.period_from, d.statement.period_to)) {
+            {{ d.statement.period_from | date: 'd MMMM y' }}
+          } @else {
+            {{ d.statement.period_from | date: 'd MMM y' }} au {{ d.statement.period_to | date: 'd MMM y' }}
+          }
+          · {{ d.statement.line_count }} ligne{{ d.statement.line_count > 1 ? 's' : '' }}
+          · importé le {{ d.statement.imported_at | date: 'd MMM y à HH:mm' }}@if (importedByName()) { par {{ importedByName() }}}
+        </p>
+      </div>
     </div>
-  }
-</section>
 
-<section class="gaps-card">
-  <h2 class="gaps-title">Écarts à expliquer</h2>
-  <table class="gaps-table">
-    <thead>
-      <tr>
-        <th>Réf. Orange</th>
-        <th>Type</th>
-        <th>Montant</th>
-        <th>Constat</th>
-        <th>Statut</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td class="ref">CI270414.2231.9AF0</td>
-        <td>Encaissement</td>
-        <td class="nowrap">1 500 F</td>
-        <td class="constat">Paiement confirmé par Orange après expiration de la commande SD-1611</td>
-        <td><span class="pill pill-red">À traiter</span></td>
-        <td class="actions">
-          <button class="btn-primary" type="button">Rembourser</button>
-          <button class="btn-row" type="button">Expliquer</button>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-</section>
+    @if (notice()) { <div class="banner success" role="status">{{ notice() }}</div> }
 
-<div class="toolbar">
-  <div class="search-box">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a736c" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input type="search" placeholder="Date (2027-04-14)..." class="search-input" />
-  </div>
-  <select class="sel">
-    <option>Statut : tous</option>
-    <option>À traiter</option>
-    <option>Clôturé</option>
-  </select>
-  <select class="sel">
-    <option>Depuis le lancement</option>
-    <option>7 derniers jours</option>
-    <option>30 derniers jours</option>
-  </select>
-  <span class="period-label">1 mars – 15 avr. 2027</span>
-</div>
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-label">Lignes rapprochées</span>
+        <strong class="kpi-val">{{ d.summary.matched }}</strong>
+        <span class="kpi-sub">trouvées dans le grand livre Seddo</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Écarts ouverts</span>
+        <strong class="kpi-val" [class.red]="d.summary.openGaps">{{ d.summary.openGaps }}</strong>
+        <span class="kpi-sub">à expliquer ou rembourser</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Montant non expliqué</span>
+        <strong class="kpi-val" [class.red]="d.summary.unexplainedAmount">{{ money(d.summary.unexplainedAmount) }}</strong>
+        <span class="kpi-sub">somme des écarts ouverts</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Absentes du relevé</span>
+        <strong class="kpi-val" [class.red]="d.summary.missingInStatement">{{ d.summary.missingInStatement }}</strong>
+        <span class="kpi-sub">transactions Seddo non vues chez Orange</span>
+      </div>
+    </section>
 
-<div class="table-card">
-  <table class="data-table">
-    <thead>
-      <tr>
-        <th>Journée</th>
-        <th class="num">Relevé Orange (net)</th>
-        <th class="num">Grand livre Seddo (net)</th>
-        <th class="num">Écart</th>
-        <th>Statut</th>
-        <th>Clôturé par</th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (j of journees; track j.jour) {
-        <tr>
-          <td><strong>{{ j.jour }}</strong></td>
-          <td class="num">{{ j.releve }}</td>
-          <td class="num">{{ j.grandLivre }}</td>
-          <td class="num" [class.ecart-red]="j.aTraiter">{{ j.ecart }}</td>
-          <td>
-            @if (j.aTraiter) {
-              <span class="pill pill-red">À traiter</span>
-            } @else {
-              <span class="pill pill-green">Clôturé</span>
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">Lignes du relevé</h2>
+        <div class="tabs" role="tablist">
+          @for (f of lineFilters; track f.code) {
+            <button type="button" role="tab" class="tab" [class.active]="lineFilter() === f.code" [attr.aria-selected]="lineFilter() === f.code" (click)="lineFilter.set(f.code)">
+              {{ f.label }} <span class="count" [class.count-red]="f.code === 'open' && lineCounts().open">{{ lineCounts()[f.code] }}</span>
+            </button>
+          }
+        </div>
+      </div>
+      <div class="scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Réf. Orange</th>
+              <th>Commande</th>
+              <th>Sens</th>
+              <th class="num">Relevé</th>
+              <th class="num">Grand livre</th>
+              <th>Statut</th>
+              <th>Explication</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of visibleLines(); track l.id) {
+              <tr [class.row-open]="isOpen(l)">
+                <td class="nowrap">{{ l.occurredAt | date: 'd MMM HH:mm' }}</td>
+                <td class="mono">{{ l.providerRef }}</td>
+                <td>
+                  @if (l.orderId) { <span class="mono">{{ l.orderId }}</span> } @else { <span class="muted">—</span> }
+                  @if (l.msisdn) { <div class="sub mono">{{ l.msisdn }}</div> }
+                </td>
+                <td>{{ direction(l.direction) }}</td>
+                <td class="num nowrap"><strong>{{ money(l.amount) }}</strong></td>
+                <td class="num nowrap" [class.red]="amountDiffers(l)">{{ money(l.ledgerAmount) }}</td>
+                <td><span [class]="matchTone(l.match)" [attr.title]="l.match">{{ matchLabel(l.match) }}</span></td>
+                <td class="explain">{{ l.explanation || '' }}</td>
+                <td class="actions">
+                  @if (isOpen(l)) {
+                    @if (canRefund(l)) {
+                      <button class="btn-primary sm" type="button" (click)="openDialog('refund', l)">Rembourser</button>
+                    }
+                    <button class="btn-row" type="button" (click)="openDialog('explain', l)">Expliquer</button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="9" class="empty">{{ lineFilter() === 'open' ? 'Aucun écart à traiter.' : 'Aucune ligne.' }}</td></tr>
             }
-          </td>
-          <td>{{ j.clotureePar }}</td>
-        </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">Transactions Seddo absentes du relevé</h2>
+        <span class="card-sub">Enregistrées dans le grand livre sur la période, mais introuvables chez Orange.</span>
+      </div>
+      @if (d.missingInStatement.length) {
+        <div class="scroll">
+          <table class="data-table">
+            <thead>
+              <tr><th>Date</th><th>Référence</th><th>Commande</th><th>Type</th><th class="num">Montant</th><th>Statut</th></tr>
+            </thead>
+            <tbody>
+              @for (tx of d.missingInStatement; track $index) {
+                @let m = missing(tx);
+                <tr>
+                  <td class="nowrap">{{ m.date ? (m.date | date: 'd MMM HH:mm') : '—' }}</td>
+                  <td class="mono">{{ m.ref }}</td>
+                  <td class="mono">{{ m.order }}</td>
+                  <td>{{ m.type }}</td>
+                  <td class="num nowrap">{{ money(m.amount) }}</td>
+                  <td>{{ m.status }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <p class="empty">Aucune : toutes les transactions de la période figurent dans le relevé.</p>
       }
-    </tbody>
-  </table>
-    <div class="pagination">
-      <div class="pag-left">
-        <span>1-10 sur 45</span>
-        <select class="pag-sel"><option>10</option><option>25</option><option>50</option></select>
-        <span>par page</span>
-      </div>
-      <div class="pag-right">
-        <button class="pag-btn" type="button" disabled aria-label="Première page">«</button>
-        <button class="pag-btn" type="button" disabled aria-label="Page précédente">‹</button>
-        <button class="pag-btn active" type="button">1</button>
-        <button class="pag-btn" type="button">2</button>
-        <button class="pag-btn" type="button">3</button>
-        <button class="pag-btn" type="button" aria-label="Page suivante">›</button>
-        <button class="pag-btn" type="button" aria-label="Dernière page">»</button>
-      </div>
+    </section>
+  } @else if (detailError()) {
+    <div class="banner" role="alert">{{ detailError() }} <button class="btn-link" type="button" (click)="loadDetail(true)">Réessayer</button></div>
+  } @else {
+    <p class="loading">Chargement du relevé…</p>
+  }
+} @else {
+  <!-- ─── Liste des relevés ─── -->
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Rapprochement</h1>
+      <p class="page-sub">Relevé du compte marchand Orange Money comparé au grand livre Seddo</p>
     </div>
-</div>
+    <button class="btn-primary" type="button" [disabled]="importing()" (click)="fileInput.click()">
+      {{ importing() ? 'Import en cours…' : 'Importer un relevé (CSV)' }}
+    </button>
+  </div>
+
+  @if (error()) { <div class="banner" role="alert">{{ error() }} <button class="btn-link" type="button" (click)="load()">Réessayer</button></div> }
+  @if (notice()) { <div class="banner success" role="status">{{ notice() }}</div> }
+
+  <section class="kpi-grid three">
+    <div class="kpi-card">
+      <span class="kpi-label">Relevés importés</span>
+      <strong class="kpi-val">{{ total() }}</strong>
+      <span class="kpi-sub">depuis le lancement</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Écarts ouverts</span>
+      <strong class="kpi-val" [class.red]="openGapsOnPage()">{{ openGapsOnPage() }}</strong>
+      <span class="kpi-sub">{{ pageCount() > 1 ? 'sur les relevés de cette page' : 'tous relevés confondus' }}</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Dernier import</span>
+      @if (lastImport(); as li) {
+        <strong class="kpi-val sm">{{ li.importedAt | date: 'd MMM HH:mm' }}</strong>
+        <span class="kpi-sub">par {{ li.importedBy }}</span>
+      } @else {
+        <strong class="kpi-val sm">—</strong>
+        <span class="kpi-sub">aucun relevé</span>
+      }
+    </div>
+  </section>
+
+  <div class="toolbar">
+    <div class="search-box">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a736c" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" class="search-input" placeholder="Rechercher un relevé…" aria-label="Rechercher un relevé" [value]="search()" (input)="onSearch($any($event.target).value)" />
+    </div>
+  </div>
+
+  <div class="card table-card" [class.stale]="loading()">
+    <div class="scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Fichier</th>
+            <th>Période du relevé</th>
+            <th class="num">Lignes</th>
+            <th>Importé le</th>
+            <th>Par</th>
+            <th>Écarts</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of statements(); track s.id) {
+            <tr class="row-link" tabindex="0" (click)="open(s.id)" (keydown.enter)="open(s.id)">
+              <td><strong>{{ s.filename }}</strong></td>
+              <td class="nowrap">
+                @if (samePeriodDay(s.periodFrom, s.periodTo)) {
+                  {{ s.periodFrom | date: 'd MMM y' }}
+                } @else {
+                  {{ s.periodFrom | date: 'd MMM' }} – {{ s.periodTo | date: 'd MMM y' }}
+                }
+              </td>
+              <td class="num">{{ s.lineCount }}</td>
+              <td class="nowrap">{{ s.importedAt | date: 'd MMM y HH:mm' }}</td>
+              <td>{{ s.importedBy }}</td>
+              <td>
+                @if (s.openGaps) {
+                  <span class="pill pill-red">{{ s.openGaps }} à traiter</span>
+                } @else {
+                  <span class="pill pill-green">Soldé</span>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="empty">{{ loading() ? 'Chargement…' : search() ? 'Aucun relevé ne correspond.' : 'Aucun relevé importé.' }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <span>{{ range() }}</span>
+      @if (pageCount() > 1) {
+        <div class="pag-right">
+          <button class="pag-btn" type="button" aria-label="Page précédente" [disabled]="page() === 1" (click)="goTo(page() - 1)">‹</button>
+          <span>Page {{ page() }} / {{ pageCount() }}</span>
+          <button class="pag-btn" type="button" aria-label="Page suivante" [disabled]="page() === pageCount()" (click)="goTo(page() + 1)">›</button>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+@if (dialog(); as dg) {
+  <div class="modal-backdrop" (click)="closeDialog()">
+    <form class="modal" role="dialog" aria-modal="true" aria-labelledby="dlg-title" (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); confirmDialog()">
+      <h2 id="dlg-title" class="modal-title">{{ dg.kind === 'explain' ? 'Expliquer l’écart' : 'Rembourser l’encaissement' }}</h2>
+      <dl class="modal-facts">
+        <div><dt>Réf. Orange</dt><dd class="mono">{{ dg.line.providerRef }}</dd></div>
+        <div><dt>Montant</dt><dd>{{ money(dg.line.amount) }}</dd></div>
+        @if (dg.line.msisdn) { <div><dt>Numéro</dt><dd class="mono">{{ dg.line.msisdn }}</dd></div> }
+        <div><dt>Date</dt><dd>{{ dg.line.occurredAt | date: 'd MMM y HH:mm' }}</dd></div>
+      </dl>
+      <p class="modal-sub">
+        @if (dg.kind === 'explain') {
+          L’écart sort des écarts ouverts avec cette explication (frais Orange, opération manuelle…). Aucun argent ne bouge.
+        } @else {
+          {{ money(dg.line.amount) }} seront renvoyés {{ dg.line.msisdn ? 'au ' + dg.line.msisdn : 'au payeur' }} par Orange Money : de l’argent reçu sans course correspondante.
+        }
+      </p>
+      <label class="form-label" for="dlg-reason">{{ dg.kind === 'explain' ? 'Explication (obligatoire)' : 'Motif (obligatoire)' }}</label>
+      <input id="dlg-reason" class="form-input" type="text" autocomplete="off" [placeholder]="dg.kind === 'explain' ? 'Ex. Frais Orange du mois' : 'Ex. Client débité sans course'" [value]="reason()" (input)="reason.set($any($event.target).value)" />
+      @if (dialogError()) { <div class="banner" role="alert">{{ dialogError() }}</div> }
+      <div class="modal-actions">
+        <button class="btn-secondary" type="button" [disabled]="busy()" (click)="closeDialog()">Annuler</button>
+        <button class="btn-primary" type="submit" [disabled]="busy()">{{ busy() ? 'En cours…' : dg.kind === 'explain' ? 'Valider l’explication' : 'Rembourser ' + money(dg.line.amount) }}</button>
+      </div>
+    </form>
+  </div>
+}
