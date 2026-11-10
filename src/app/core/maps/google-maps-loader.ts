@@ -4,7 +4,7 @@ import { API_ENDPOINTS } from '../api/api-endpoints';
 import { ApiService } from '../api/api.service';
 
 /** Pourquoi la carte n'a pas pu être chargée. */
-export type MapsLoadError = 'NO_KEY' | 'PARAMS_UNREACHABLE' | 'SCRIPT_UNREACHABLE';
+export type MapsLoadError = 'NO_KEY' | 'DISABLED' | 'PARAMS_UNREACHABLE' | 'SCRIPT_UNREACHABLE';
 
 const SCRIPT_ID = 'google-maps-sdk';
 
@@ -32,13 +32,19 @@ export class GoogleMapsLoader {
 
   private async fetchKeyAndInject(): Promise<any> {
     let key: string | null | undefined;
+    let enabled: boolean | undefined;
     try {
-      const params = await firstValueFrom(this.api.get<{ maps?: { web?: string | null } }>(API_ENDPOINTS.app.params));
+      const params = await firstValueFrom(
+        this.api.get<{ maps?: { web?: string | null }; mapsEnabled?: { web?: boolean } }>(API_ENDPOINTS.app.params)
+      );
       key = params?.maps?.web?.trim();
+      enabled = params?.mapsEnabled?.web;
     } catch {
       throw 'PARAMS_UNREACHABLE' satisfies MapsLoadError;
     }
     if (!key) throw 'NO_KEY' satisfies MapsLoadError;
+    // Coupé dans Paramètres : la clé existe mais ne doit pas être utilisée.
+    if (enabled === false) throw 'DISABLED' satisfies MapsLoadError;
 
     document.getElementById(SCRIPT_ID)?.remove();
     return new Promise((resolve, reject) => {
@@ -61,6 +67,8 @@ export function mapsErrorMessage(err: unknown): string {
   switch (err as MapsLoadError) {
     case 'NO_KEY':
       return 'Aucune clé Google Maps web configurée (Paramètres › Clés Google Maps).';
+    case 'DISABLED':
+      return 'Google Maps est coupé pour le web (Paramètres › Clés Google Maps).';
     case 'PARAMS_UNREACHABLE':
       return 'Impossible de lire la clé Google Maps depuis l’API.';
     default:

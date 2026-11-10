@@ -7,14 +7,23 @@
     </div>
   </header>
 
-  <section class="settings-card maps-card">
+  <section class="settings-card maps-card" [class.collapsed]="!isOpen(mapsSection)">
     <div class="maps-head">
-      <div>
-        <h2>Clés Google Maps des applications</h2>
-        <p class="card-sub">Réservé aux administrateurs. Chaque changement est inscrit au journal d'audit (fin de clé seulement).</p>
-      </div>
-      <button class="btn-primary" type="button" [disabled]="!changedPlatforms().length" (click)="openConfirm()">Enregistrer</button>
+      <h2 class="section-head">
+        <button type="button" class="section-toggle" [attr.aria-expanded]="isOpen(mapsSection)" aria-controls="section-maps" (click)="toggleSection(mapsSection)">
+          <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
+          Clés Google Maps des applications
+        </button>
+      </h2>
+      @if (isOpen(mapsSection)) {
+        <button class="btn-primary" type="button" [disabled]="!changedPlatforms().length" (click)="openConfirm()">Enregistrer</button>
+      } @else if (changedPlatforms().length) {
+        <span class="status-pill status-off">Modifications non enregistrées</span>
+      }
     </div>
+
+    <div id="section-maps" class="section-body" [hidden]="!isOpen(mapsSection)">
+    <p class="card-sub">Réservé aux administrateurs. Chaque changement est inscrit au journal d'audit (fin de clé seulement).</p>
 
     @if (mapsError()) {
       <div class="state-banner" role="alert">{{ mapsError() }} <button class="btn-link" type="button" (click)="loadMaps()">Réessayer</button></div>
@@ -44,6 +53,21 @@
               <span class="status-pill status-off">Non configurée</span>
             }
           </div>
+          <button
+            class="toggle"
+            type="button"
+            role="switch"
+            [attr.aria-checked]="isEnabled(pl.key)"
+            [attr.aria-label]="'Google Maps sur ' + pl.label"
+            [class.on]="isEnabled(pl.key)"
+            [class.pending]="switching()?.platform === pl.key"
+            [disabled]="!p.maps[pl.key]"
+            [title]="p.maps[pl.key] ? (isEnabled(pl.key) ? 'Couper Google sans retirer la clé' : 'Réactiver Google') : 'Ajoutez d’abord une clé'"
+            (click)="askSwitch(pl.key, pl.label)"
+          >
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span class="toggle-text">{{ isEnabled(pl.key) ? 'Activée' : 'Coupée' }}</span>
+          </button>
           <div class="key-actions">
             @if (editing()[pl.key] || isRemoved(pl.key)) {
               <button class="btn-link" type="button" (click)="cancel(pl.key)">Annuler</button>
@@ -57,10 +81,14 @@
         </div>
       }
     }
+    </div>
   </section>
 
   <div class="settings-toolbar">
     <h2 class="settings-title">Paramètres globaux</h2>
+    @if (!search().trim() && groups().length) {
+      <button class="btn-link" type="button" (click)="setAllSections(allCollapsed())">{{ allCollapsed() ? 'Tout déplier' : 'Tout replier' }}</button>
+    }
     <input class="form-input search" type="search" placeholder="Rechercher un paramètre…" aria-label="Rechercher un paramètre" [value]="search()" (input)="search.set($any($event.target).value)" />
   </div>
   <p class="card-sub settings-intro">Chaque modification demande un motif et s'applique tout de suite, sauf mention « au redémarrage ».</p>
@@ -75,9 +103,16 @@
     <p class="card-sub">Chargement des paramètres…</p>
   }
 
-  @for (g of groups(); track g.name) {
-    <section class="settings-card">
-      <h2>{{ g.name }}</h2>
+  @for (g of groups(); track g.name; let i = $index) {
+    <section class="settings-card" [class.collapsed]="!isOpen(g.name)">
+      <h2 class="section-head">
+        <button type="button" class="section-toggle" [attr.aria-expanded]="isOpen(g.name)" [attr.aria-controls]="'section-' + i" [disabled]="!!search().trim()" (click)="toggleSection(g.name)">
+          <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
+          {{ g.name }}
+          <span class="section-count">{{ g.items.length }}</span>
+        </button>
+      </h2>
+      <div [id]="'section-' + i" class="section-body" [hidden]="!isOpen(g.name)">
       @for (s of g.items; track s.key) {
         <div class="setting-row" [class.editing]="editingKey() === s.key">
           <div class="setting-info">
@@ -136,6 +171,7 @@
           }
         </div>
       }
+      </div>
     </section>
   } @empty {
     @if (!settingsLoading() && !settingsError()) {
@@ -162,6 +198,32 @@
       <div class="modal-actions">
         <button class="btn-secondary" type="button" [disabled]="busy()" (click)="closePending()">Annuler</button>
         <button class="btn-primary" type="submit" [disabled]="busy()">{{ busy() ? 'Enregistrement…' : 'Confirmer' }}</button>
+      </div>
+    </form>
+  </div>
+}
+
+@if (switching(); as sw) {
+  <div class="modal-backdrop" (click)="closeSwitch()">
+    <form class="modal" role="dialog" aria-modal="true" aria-labelledby="switch-title" (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); saveSwitch()">
+      <h2 id="switch-title" class="modal-title">{{ sw.enabled ? 'Réactiver' : 'Couper' }} Google Maps sur {{ sw.label }} ?</h2>
+      <p class="card-sub">
+        @if (sw.enabled) {
+          La clé enregistrée est de nouveau utilisée pour les cartes et la recherche d'adresse.
+        } @else {
+          La clé est conservée mais n'est plus utilisée : l'app passe sur sa carte de repli (ex. OpenStreetMap).
+          @if (sw.platform === 'web') { Les cartes du backoffice (tableau de bord, zones) ne s'afficheront plus. }
+        }
+        Pris en compte sous 5 minutes.
+      </p>
+      <label class="form-label" for="switch-reason">Motif (obligatoire)</label>
+      <input id="switch-reason" class="form-input" type="text" autocomplete="off" [value]="reason()" (input)="reason.set($any($event.target).value)" />
+      @if (dialogError()) {
+        <div class="state-banner" role="alert">{{ dialogError() }}</div>
+      }
+      <div class="modal-actions">
+        <button class="btn-secondary" type="button" [disabled]="busy()" (click)="closeSwitch()">Annuler</button>
+        <button class="btn-primary" type="submit" [disabled]="busy()">{{ busy() ? 'Enregistrement…' : sw.enabled ? 'Réactiver' : 'Couper' }}</button>
       </div>
     </form>
   </div>

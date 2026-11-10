@@ -156,7 +156,7 @@
 
 .key-row {
   display: grid;
-  grid-template-columns: 220px 1fr auto;
+  grid-template-columns: 220px 1fr 120px auto;
   align-items: center;
   gap: 14px;
   padding: 4px 0;
@@ -500,3 +500,58 @@
 @media (prefers-reduced-motion: reduce) {
   .toggle-track, .toggle-thumb { transition: none; }
 }
+
+/* Sections repliables */
+.settings-card .section-head { padding-bottom: 0; margin-bottom: 0; }
+
+.section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0 0 12px;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.maps-head .section-toggle { padding-bottom: 0; }
+.section-toggle:disabled { cursor: default; }
+.section-toggle:focus-visible { outline: 2px solid #ffd3b8; outline-offset: 4px; border-radius: 6px; }
+
+.chevron {
+  flex: none;
+  color: #8a837c;
+  transition: transform 0.2s ease;
+}
+
+.section-toggle:hover:not(:disabled) .chevron { color: #ff5a00; }
+.collapsed .chevron { transform: rotate(-90deg); }
+
+.section-count {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #f1eeea;
+  color: #6b645d;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.section-body { display: flex; flex-direction: column; }
+.maps-card .section-body { gap: 16px; }
+.section-body[hidden] { display: none; }
+
+.settings-card.collapsed { gap: 0; }
+.settings-card.collapsed h2,
+.settings-card.collapsed .maps-head { border-bottom: none; padding-bottom: 0; }
+.settings-card.collapsed .section-toggle { padding-bottom: 0; }
+.maps-card .maps-head { align-items: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron { transition: none; }
+}
+.settings-toolbar .btn-link { margin-left: auto; }
+.toggle:disabled { cursor: not-allowed; opacity: 0.5; }

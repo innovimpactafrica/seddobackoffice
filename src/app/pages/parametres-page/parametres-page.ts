@@ -11,6 +11,19 @@ const PLATFORMS: { key: MapsPlatform; label: string; hint: string }[] = [
   { key: 'web', label: 'Web', hint: 'Backoffice et simulateur' }
 ];
 
+const MAPS_SECTION = '__maps__';
+const COLLAPSED_KEY = 'seddo_bo_settings_collapsed';
+
+function readCollapsed(): Set<string> {
+  try {
+    const raw = typeof localStorage === 'undefined' ? null : localStorage.getItem(COLLAPSED_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
 @Component({
   selector: 'app-parametres-page',
   imports: [CommonModule],
@@ -69,6 +82,43 @@ export class ParametresPage implements OnInit {
   protected readonly reason = signal('');
   protected readonly dialogError = signal('');
   protected readonly busy = signal(false);
+
+  // ─── Sections repliables ──────────────────────────────────────────────────
+
+  /** Sections repliées (nom du groupe, ou MAPS_SECTION), mémorisées dans ce navigateur. */
+  protected readonly collapsed = signal<ReadonlySet<string>>(readCollapsed());
+  protected readonly mapsSection = MAPS_SECTION;
+
+  /** Une recherche déplie tous les groupes, pour ne pas cacher les résultats (la carte Maps n'est pas filtrée). */
+  protected isOpen(section: string): boolean {
+    if (section !== MAPS_SECTION && this.search().trim()) return true;
+    return !this.collapsed().has(section);
+  }
+
+  protected toggleSection(section: string): void {
+    const next = new Set(this.collapsed());
+    if (next.has(section)) next.delete(section);
+    else next.add(section);
+    this.saveCollapsed(next);
+  }
+
+  protected setAllSections(open: boolean): void {
+    this.saveCollapsed(new Set(open ? [] : [MAPS_SECTION, ...this.groups().map(g => g.name)]));
+  }
+
+  protected readonly allCollapsed = computed(() => {
+    const c = this.collapsed();
+    return c.has(MAPS_SECTION) && this.groups().every(g => c.has(g.name));
+  });
+
+  private saveCollapsed(next: ReadonlySet<string>): void {
+    this.collapsed.set(next);
+    try {
+      localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...next]));
+    } catch {
+      // Stockage indisponible : le repli vaut pour cette visite seulement.
+    }
+  }
 
   ngOnInit(): void {
     this.loadSettings();
@@ -282,6 +332,52 @@ export class ParametresPage implements OnInit {
 
   protected isRemoved(platform: MapsPlatform): boolean {
     return this.drafts()[platform] === '' && !!this.params()?.maps[platform] && !this.editing()[platform];
+  }
+
+  /** Google activé sur la plateforme ; si l'API ne renvoie pas encore mapsEnabled, une clé présente vaut activé. */
+  protected isEnabled(platform: MapsPlatform): boolean {
+    const p = this.params();
+    return p?.mapsEnabled?.[platform] ?? !!p?.maps[platform];
+  }
+
+  /** Activation à confirmer avec un motif (envoyée seule, sans toucher aux clés). */
+  protected readonly switching = signal<{ platform: MapsPlatform; label: string; enabled: boolean } | null>(null);
+
+  protected askSwitch(platform: MapsPlatform, label: string): void {
+    this.mapsNotice.set('');
+    this.reason.set('');
+    this.dialogError.set('');
+    this.switching.set({ platform, label, enabled: !this.isEnabled(platform) });
+  }
+
+  protected closeSwitch(): void {
+    if (!this.busy()) this.switching.set(null);
+  }
+
+  protected saveSwitch(): void {
+    const sw = this.switching();
+    if (!sw) return;
+    const reason = this.reason().trim();
+    if (!reason) return this.dialogError.set('Le motif est obligatoire.');
+    this.busy.set(true);
+    this.dialogError.set('');
+    this.service.updateAppParams({ [`${sw.platform}Enabled`]: sw.enabled }, reason).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.switching.set(null);
+        this.mapsNotice.set(
+          sw.enabled
+            ? `Google Maps réactivé sur ${sw.label}.`
+            : `Google Maps coupé sur ${sw.label} : la carte de repli est utilisée (prise en compte sous 5 min).`
+        );
+        // Garde les saisies de clés en cours : seule l'activation a changé.
+        this.service.appParams().subscribe({ next: params => this.params.set(params) });
+      },
+      error: err => {
+        this.busy.set(false);
+        this.dialogError.set(this.message(err, "L'activation n'a pas pu être modifiée."));
+      }
+    });
   }
 
   protected openConfirm(): void {
