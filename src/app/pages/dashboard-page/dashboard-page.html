@@ -57,7 +57,9 @@
               <strong>{{ a.title }}</strong>
               <div class="alert-sub">{{ a.sub }}</div>
             </div>
-            <a class="bbtn" [ngClass]="a.btnClass" [routerLink]="a.link">{{ a.btn }}</a>
+            @if (canOpen(a.link)) {
+              <a class="bbtn" [ngClass]="a.btnClass" [routerLink]="a.link">{{ a.btn }}</a>
+            }
           </div>
         } @empty {
           <div class="alert-sub">Rien à traiter pour le moment.</div>
@@ -87,9 +89,11 @@
           }
         </tbody>
       </table>
-      <div class="card-footer-btn">
-        <a class="bbtn btn-s" routerLink="/rapports">Voir les rapports</a>
-      </div>
+      @if (canOpen('/rapports')) {
+        <div class="card-footer-btn">
+          <a class="bbtn btn-s" routerLink="/rapports">Voir les rapports</a>
+        </div>
+      }
     </div>
 
     <!-- Carte live des véhicules (Google Maps) -->

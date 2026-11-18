@@ -20,8 +20,8 @@
                   [routerLinkActiveOptions]="{ exact: true }"
                 >
                   <span class="nav-label">{{ item.label }}</span>
-                  @if (item.badge) {
-                    <span class="nav-badge" aria-label="{{ item.badge }} éléments en attente">{{ item.badge }}</span>
+                  @if (badgeOf(item); as count) {
+                    <span class="nav-badge" [attr.aria-label]="count + ' en attente'">{{ badgeText(count) }}</span>
                   }
                 </a>
               </li>

@@ -122,6 +122,9 @@
   font-size: 0.67rem;
   font-weight: 700;
   line-height: 1;
+  min-width: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .sidebar-footer {

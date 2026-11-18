@@ -373,6 +373,11 @@ export class CoursesPage implements OnInit, OnDestroy {
     switch (e.type) {
       case 'RIDE_CREATED':
         return { heure, texteL1: `Commande${typeof p['price'] === 'number' ? ` - devis ${fmt(p['price'])}` : ''}` };
+      case 'OFFER_SENT': {
+        // Forme du payload non encore observée : on affiche le chauffeur s'il est fourni.
+        const driver = [p['driverName'], p['driver']].find((v): v is string => typeof v === 'string' && !!v);
+        return { heure, texteL1: 'Offre envoyée au chauffeur', texteL2: driver };
+      }
       case 'PAYMENT_INITIATED':
         return { heure, texteL1: `Paiement initié${amount ? ` · ${amount}` : ''}`, texteL2: orderId, orange: true };
       case 'STATUS_CHANGED':

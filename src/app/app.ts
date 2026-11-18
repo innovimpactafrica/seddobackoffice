@@ -1,15 +1,20 @@
 import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { filter } from 'rxjs';
+import { catchError, EMPTY, exhaustMap, filter, interval, merge, startWith, Subject } from 'rxjs';
 import { AuthService } from './auth/auth.service';
 import { canAccessPath, firstAllowedPath } from './auth/access';
+import { AdminBadges, BadgeKey, BadgesService } from './core/api/badges.service';
+
+/** Rafraîchissement périodique des compteurs de la sidebar. */
+const BADGES_REFRESH_MS = 60_000;
 
 interface NavItem {
   label: string;
   icon: string;
   path: string;
-  badge?: number;
+  /** Compteur de GET /v1/admin/badges affiché sur ce menu. */
+  badgeKey?: BadgeKey;
 }
 
 interface NavGroup {
@@ -27,6 +32,11 @@ export class App {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly auth = inject(AuthService);
+  private readonly badgesService = inject(BadgesService);
+
+  /** Derniers compteurs reçus (null tant que rien n'est chargé : aucune pastille). */
+  private readonly badges = signal<AdminBadges | null>(null);
+  private readonly badgesRefresh = new Subject<void>();
 
   protected readonly pageTitle = signal('Tableau de bord');
 
@@ -51,20 +61,20 @@ export class App {
     return u.initials;
   });
 
-  /** Données statiques de démonstration (badges exacts de la maquette) */
+  /** Menus de la sidebar ; `badgeKey` relie un menu à son compteur API. */
   private readonly allNavGroups: NavGroup[] = [
     {
       title: 'PILOTAGE',
       items: [
         { label: 'Tableau de bord', icon: '',  path: '/dashboard' },
-        { label: 'Courses',         icon: '',  path: '/courses',  badge: 10 },
+        { label: 'Courses',         icon: '',  path: '/courses',  badgeKey: 'rides' },
         { label: 'Rapports',        icon: '',  path: '/rapports' }
       ]
     },
     {
       title: 'OPÉRATIONS',
       items: [
-        { label: 'Chauffeurs', icon: '', path: '/chauffeurs', badge: 6 },
+        { label: 'Chauffeurs', icon: '', path: '/chauffeurs', badgeKey: 'drivers' },
         { label: 'Clients',    icon: '', path: '/clients' },
         { label: 'Zones',      icon: '', path: '/zones' }
       ]
@@ -73,16 +83,16 @@ export class App {
       title: 'FINANCE',
       items: [
         { label: 'Portefeuilles',        icon: '', path: '/portefeuilles' },
-        { label: 'Paiements',            icon: '', path: '/paiements' },
-        { label: 'Versements',           icon: '', path: '/versements',    badge: 3 },
-        { label: 'Rapprochement',        icon: '', path: '/rapprochement', badge: 1 }
+        { label: 'Paiements',            icon: '', path: '/paiements',     badgeKey: 'payments' },
+        { label: 'Versements',           icon: '', path: '/versements',    badgeKey: 'payouts' },
+        { label: 'Rapprochement',        icon: '', path: '/rapprochement', badgeKey: 'reconciliation' }
       ]
     },
     {
       title: 'SUPPORT',
       items: [
-        { label: 'Réclamations', icon: '', path: '/reclamations', badge: 8 },
-        { label: 'Alertes SOS',  icon: '', path: '/alertes-sos',  badge: 1 },
+        { label: 'Réclamations', icon: '', path: '/reclamations', badgeKey: 'tickets' },
+        { label: 'Alertes SOS',  icon: '', path: '/alertes-sos',  badgeKey: 'sos' },
         { label: 'Communication',icon: '', path: '/communication' }
       ]
     },
@@ -117,6 +127,33 @@ export class App {
 
     this.onNavEnd();
     void this.syncProfile();
+    this.watchBadges();
+  }
+
+  /** Compteur à afficher pour un menu (0 ou inconnu → pas de pastille). */
+  protected badgeOf(item: NavItem): number {
+    const value = item.badgeKey ? this.badges()?.[item.badgeKey] : undefined;
+    return typeof value === 'number' && value > 0 ? value : 0;
+  }
+
+  protected badgeText(count: number): string {
+    return count > 99 ? '99+' : String(count);
+  }
+
+  /**
+   * Recharge les compteurs au démarrage, à chaque navigation (une action vient
+   * peut-être d'être traitée) et toutes les minutes. Erreur → on garde les derniers.
+   */
+  private watchBadges(): void {
+    if (typeof window === 'undefined') return;
+    merge(this.badgesRefresh, interval(BADGES_REFRESH_MS))
+      .pipe(
+        startWith(undefined),
+        filter(() => this.showShell()),
+        exhaustMap(() => this.badgesService.get().pipe(catchError(() => EMPTY))),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(badges => this.badges.set(badges));
   }
 
   /** Rôle changé depuis la connexion : l'écran ouvert peut ne plus être autorisé. */
@@ -141,6 +178,7 @@ export class App {
 
     const currentUrl = this.router.url || (typeof window !== 'undefined' ? window.location.pathname : '');
     this.isLoginRoute.set(currentUrl.includes('/login'));
+    this.badgesRefresh.next();
   }
 
   protected askLogout(): void {
@@ -153,6 +191,7 @@ export class App {
 
   protected async confirmLogout(): Promise<void> {
     this.logoutConfirmOpen.set(false);
+    this.badges.set(null);
     await this.auth.signOut();
     await this.router.navigate(['/login']);
   }

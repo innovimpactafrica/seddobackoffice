@@ -12,6 +12,8 @@ import {
 import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { GoogleMapsLoader, mapsErrorMessage } from '../../core/maps/google-maps-loader';
+import { AuthService } from '../../auth/auth.service';
+import { canAccessPath } from '../../auth/access';
 import { DashboardService, DashboardSummary, LedgerBalances, LiveMap } from './dashboard.service';
 import { ActiveZone, toPaths, ZonesService } from '../zones-page/zones.service';
 
@@ -82,6 +84,12 @@ export class DashboardPage implements AfterViewInit, OnDestroy {
   private readonly service = inject(DashboardService);
   private readonly zonesService = inject(ZonesService);
   private readonly mapsLoader = inject(GoogleMapsLoader);
+  private readonly auth = inject(AuthService);
+
+  /** N'affiche un lien que si le rôle a accès à la page cible (comme le menu). */
+  protected canOpen(path: string): boolean {
+    return canAccessPath(this.auth.currentUser()?.roleCode, path);
+  }
 
   @ViewChild('gmapContainer') private gmapContainer?: ElementRef<HTMLDivElement>;
 
@@ -174,7 +182,7 @@ export class DashboardPage implements AfterViewInit, OnDestroy {
       rows.push({ stripe: '#B26A00', title: `${s.alerts.failedDisbursements} versement(s) en échec`, sub: 'À relancer ou à traiter manuellement', btn: 'Voir', btnClass: 'btn-s', link: '/versements' });
     }
     if (s.alerts.pendingRefundRequests) {
-      rows.push({ stripe: '#B26A00', title: `${s.alerts.pendingRefundRequests} demande(s) de remboursement`, sub: 'En attente de validation', btn: 'Voir', btnClass: 'btn-s', link: '/reclamations' });
+      rows.push({ stripe: '#B26A00', title: `${s.alerts.pendingRefundRequests} demande(s) de remboursement`, sub: 'En attente de validation', btn: 'Voir', btnClass: 'btn-s', link: '/paiements' });
     }
     if (s.alerts.openTickets) {
       rows.push({ stripe: '#2852A8', title: `${s.alerts.openTickets} réclamation(s) ouverte(s)`, sub: 'Délai de première réponse cible : 2 h', btn: 'Voir', btnClass: 'btn-s', link: '/reclamations' });

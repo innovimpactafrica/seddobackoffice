@@ -27,6 +27,7 @@ export const API_ENDPOINTS = {
     categories: '/v1/admin/categories',
     category: (code: string) => `/v1/admin/categories/${code}`
   },
+  badges: '/v1/admin/badges',
   dashboard: {
     summary: '/v1/admin/dashboard',
     balances: '/v1/admin/finance/balances',

@@ -379,7 +379,7 @@
             }
           }
         </dl>
-        @if (z.type === 'SERVICE') {
+        @if (z.type === 'SERVICE' && canManage()) {
           <p class="hint">Grilles tarifaires (jour, nuit, week-end) et commission de la zone : <a routerLink="/tarification">Tarifs et commission</a>.</p>
         }
       </div>
